@@ -1,0 +1,7 @@
+{
+  "title": "Test",
+  "description": "My Test extension",
+  "url": "https://venkatesh.github.io/test-extension/index.html",
+  "icon": "https://venkatesh.github.io/test-extension/icon.png",
+  "enabled": true
+}

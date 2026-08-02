@@ -31,8 +31,19 @@
             <div class="content-panel">
                 <section class="example-card">
                     <h3>Assignment</h3>
-                    <p>Completed items from Data &gt; Explorer &gt; Completed.</p>
-                    <div id="completedData" class="completed-data">Loading completed data...</div>
+                    <div class="field">
+                        <label for="cwaSelect">CWA</label>
+                        <select id="cwaSelect" class="dropdown">
+                            <option>Loading CWA folders...</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="strSelect">STR</label>
+                        <select id="strSelect" class="dropdown">
+                            <option>Select a CWA folder first</option>
+                        </select>
+                        <div id="strMessage" class="input-note"></div>
+                    </div>
                 </section>
             </div>
         </div>

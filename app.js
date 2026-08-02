@@ -139,65 +139,134 @@ async function updateExtensionStatus() {
     }
 }
 
-async function loadCompletedData() {
-    const output = document.getElementById("completedData");
-    if (!output) return;
-    output.textContent = "Loading completed data...";
+async function loadCwaFolders() {
+    const cwaSelect = document.getElementById("cwaSelect");
+    const strSelect = document.getElementById("strSelect");
+    const strMessage = document.getElementById("strMessage");
+    if (!cwaSelect || !strSelect || !strMessage) return;
+
+    cwaSelect.innerHTML = "<option>Loading CWA folders...</option>";
+    strSelect.innerHTML = "<option>Select a CWA folder first</option>";
+    strMessage.textContent = "";
+    strSelect.disabled = true;
 
     if (!API) {
-        output.textContent = "Not connected to Trimble Connect workspace API.";
+        cwaSelect.innerHTML = "<option>Not connected to Trimble Connect API</option>";
         return;
     }
 
     try {
         let completedItems;
-
         if (API.data) {
             if (typeof API.data.getCompleted === "function") {
                 completedItems = await API.data.getCompleted();
             } else if (typeof API.data.listCompleted === "function") {
                 completedItems = await API.data.listCompleted();
-            } else if (typeof API.data.getFolders === "function") {
-                completedItems = await API.data.getFolders();
             }
         }
 
-        if (!completedItems && API.project && typeof API.project.getProject === "function") {
-            completedItems = await API.project.getProject();
-        }
-
-        const folderNames = extractFolderNames(completedItems);
-        if (folderNames.length > 0) {
-            output.innerHTML = renderCompletedList(folderNames);
+        const cwaFolders = normalizeFolderItems(completedItems);
+        if (!cwaFolders.length) {
+            cwaSelect.innerHTML = "<option>No CWA folders found</option>";
             return;
         }
 
-        output.textContent = "Completed explorer data is not available from the current workspace API.";
+        cwaSelect.innerHTML = cwaFolders
+            .map((folder) => `<option value="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</option>`)
+            .join("");
+
+        cwaSelect.addEventListener("change", async () => {
+            const selected = cwaFolders.find((folder) => folder.name === cwaSelect.value);
+            await loadStrFiles(selected);
+        });
+
+        await loadStrFiles(cwaFolders[0]);
     } catch (error) {
         console.error(error);
-        output.textContent = `Failed to load completed data: ${error.message || error}`;
+        cwaSelect.innerHTML = "<option>Unable to load CWA folders</option>";
     }
 }
 
-function extractFolderNames(value) {
-    if (!value) return [];
-    if (Array.isArray(value)) {
-        return value.flatMap((item) => extractFolderNames(item));
+async function loadStrFiles(selectedFolder) {
+    const strSelect = document.getElementById("strSelect");
+    const strMessage = document.getElementById("strMessage");
+    if (!strSelect || !strMessage) return;
+
+    if (!selectedFolder) {
+        strSelect.innerHTML = "<option>Select a CWA folder first</option>";
+        strSelect.disabled = true;
+        strMessage.textContent = "";
+        return;
     }
-    if (typeof value === "object") {
-        const folderName = value.name || value.title || value.folderName || value.displayName || value.label;
-        if (folderName) {
-            return [String(folderName)];
-        }
-        const nested = [];
-        for (const key of ["items", "folders", "data", "results", "children"]) {
-            if (Array.isArray(value[key])) {
-                nested.push(...extractFolderNames(value[key]));
+
+    strSelect.innerHTML = "<option>Loading IFC files...</option>";
+    strSelect.disabled = true;
+    strMessage.textContent = "";
+
+    try {
+        let items = [];
+        const candidates = [selectedFolder.items, selectedFolder.children, selectedFolder.files, selectedFolder.data];
+        for (const candidate of candidates) {
+            if (Array.isArray(candidate) && candidate.length) {
+                items = candidate;
+                break;
             }
         }
-        return nested;
+
+        if (!items.length && typeof API.data?.getFolder === "function" && selectedFolder.id) {
+            const folderDetails = await API.data.getFolder(selectedFolder.id);
+            items = Array.isArray(folderDetails?.items) ? folderDetails.items : folderDetails?.children || folderDetails?.files || [];
+        }
+
+        const ifcFiles = (Array.isArray(items) ? items : [])
+            .map((item) => {
+                const name = item?.name || item?.title || item;
+                return typeof name === "string" ? name : null;
+            })
+            .filter((name) => name && name.toLowerCase().endsWith(".ifc"));
+
+        if (!ifcFiles.length) {
+            strSelect.innerHTML = "<option>No IFC files available</option>";
+            strMessage.textContent = "No IFC files available.";
+            return;
+        }
+
+        strSelect.disabled = false;
+        strSelect.innerHTML = ifcFiles
+            .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+            .join("");
+    } catch (error) {
+        console.error(error);
+        strSelect.innerHTML = "<option>No IFC files available</option>";
+        strMessage.textContent = "No IFC files available.";
     }
-    return [];
+}
+
+function normalizeFolderItems(data) {
+    if (!data) return [];
+    let items = [];
+    if (Array.isArray(data)) {
+        items = data;
+    } else if (Array.isArray(data.items)) {
+        items = data.items;
+    } else if (Array.isArray(data.folders)) {
+        items = data.folders;
+    }
+    return items
+        .map((item) => {
+            if (typeof item === "string") {
+                return { name: item };
+            }
+            if (item && typeof item === "object") {
+                return {
+                    name: item.name || item.title || item.folderName || item.displayName || item.label,
+                    id: item.id,
+                    items: item.items || item.children || item.data || item.files
+                };
+            }
+            return null;
+        })
+        .filter((item) => item && typeof item.name === "string" && item.name.trim());
 }
 
 function renderCompletedList(items) {
@@ -282,13 +351,21 @@ async function start() {
         console.log("Connected to Trimble Connect workspace API", API);
         updateStatus("Connected to Trimble Connect workspace API.");
         await setMenu();
-        await loadCompletedData();
+        await loadCwaFolders();
     } catch (err) {
         console.error("Workspace API connect failed", err);
         updateStatus("Not connected to Trimble Connect workspace API.", true);
-        const output = document.getElementById("completedData");
-        if (output) {
-            output.textContent = "Unable to load completed data because the API connection failed.";
+        const cwaSelect = document.getElementById("cwaSelect");
+        const strSelect = document.getElementById("strSelect");
+        const strMessage = document.getElementById("strMessage");
+        if (cwaSelect) {
+            cwaSelect.innerHTML = "<option>Unable to load CWA folders</option>";
+        }
+        if (strSelect) {
+            strSelect.innerHTML = "<option>Select a CWA folder first</option>";
+        }
+        if (strMessage) {
+            strMessage.textContent = "";
         }
     }
 }

@@ -21,7 +21,7 @@ function renderMenuList() {
     }
 
     listEl.innerHTML = currentMenu.subMenus
-        .map((item, index) => `
+        .map((item) => `
             <div class="menu-item">
                 <div><strong>${item.title}</strong></div>
                 <div class="menu-item-meta">command: ${item.command}</div>

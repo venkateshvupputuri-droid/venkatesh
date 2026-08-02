@@ -8,11 +8,6 @@ const currentMenu = {
             title: "Extension API",
             icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
             command: "render_tc_extension_api"
-        },
-        {
-            title: "Embed API",
-            icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
-            command: "render_tc_embed_api"
         }
     ]
 };

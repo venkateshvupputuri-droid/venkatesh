@@ -19,6 +19,33 @@ function updateStatus(text, isError = false) {
     statusEl.className = `status-note ${isError ? "status-error" : "status-success"}`;
 }
 
+async function setMenu() {
+    if (!API || !API.extension) return;
+    if (typeof API.extension.setMenu === "function") {
+        try {
+            await API.extension.setMenu({
+                title: currentMenu.title,
+                icon: currentMenu.icon,
+                command: currentMenu.command,
+                subMenus: currentMenu.subMenus
+            });
+        } catch (error) {
+            console.warn("Extension setMenu failed:", error);
+        }
+    }
+}
+
+async function activateMenuItem(command = "render_tc_extension_api") {
+    if (!API || !API.extension) return;
+    if (typeof API.extension.activateMenuItem === "function") {
+        try {
+            await API.extension.activateMenuItem(command);
+        } catch (error) {
+            console.warn("Extension activateMenuItem failed:", error);
+        }
+    }
+}
+
 function renderMenuList() {
     const listEl = document.getElementById("menuList");
     if (!listEl) return;

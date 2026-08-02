@@ -1,27 +1,65 @@
-<!DOCTYPE html>
-<html>
+import * as WorkspaceAPI from "trimble-connect-workspace-api";
 
-<head>
-    <meta charset="utf-8">
-    <title>Documents Browser</title>
+....
+....
 
-    <link rel="stylesheet" href="style.css">
-</head>
+this.API = await WorkspaceAPI.connect(
+  window.parent,
+  (event, args) => {
+    switch (event) {
+      case "extension.command":
+      //"Command executed by the user: args.data"
+        break;
+      case "extension.accessToken":
+      //"Accestoken or status: args.data"
+        break;
+      case "extension.userSettingsChanged":
+      //"User settings changed!"
+        break;
+      default:
+    }
+  },
+  30000 // connection timeout in milliseconds.
+);
 
-<body>
+....
+....
 
-<div class="header">
-    <h2>📁 Project Documents</h2>
-</div>
+const mainMenuObject = {
+  title: "Test extension app",
+  icon: "http://example.com/main_menu_icon.png",
+  command: "main_nav_menu_cliked",
+  subMenus: [
+    {
+      title: "Sub menu 1",
+      icon: "http://example.com/sub_menu_icon.png",
+      command: "submenu_1_clicked",
+    },
+    {
+      title: "Sub menu 2",
+      icon: "http://example.com/sub_menu_icon.png",
+      command: "submenu_2_clicked",
+    },
+  ],
+};
 
-<div id="folders">
+// Updating the menu object.
+this.API.ui.setMenu(mainMenuObject);
 
-Loading folders...
+// Updating the active submenu.
+this.API.ui.setActiveMenuItem("submenu_1_clicked");
 
-</div>
-
-<script type="module" src="app.js"></script>
-
-</body>
-
-</html>
+// Get the current project info
+this.API.project.getCurrentProject().then((projectInfo: ConnectProject) => {
+    //Current project info: projectInfo.
+});
+//Get the current user language info.
+this.API.user.getUserSettings().then((userSettings: UserSettings) => {
+    //Current user language: userSettings.language
+});
+//Updating the status message.
+this.API.extension.setStatusMessage("<statusMessage>:string");
+//Request for the access token.
+this.API.extension.requestPermission("accesstoken").then((accessToken: string) => {
+    //Current user access token or status: accessToken
+});

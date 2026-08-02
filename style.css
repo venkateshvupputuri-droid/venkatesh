@@ -132,12 +132,38 @@ button:hover {
     background: #00447a;
 }
 
+.documents-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 18px;
+    align-items: start;
+}
+
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.left-panel-section-title {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #334155;
+    margin-bottom: 8px;
+}
+
 .menu-list {
-    border-top: 1px solid #e2e8f0;
-    padding-top: 14px;
+    background: white;
+    border: 1px solid #dde3ea;
+    border-radius: 12px;
+    padding: 16px;
 }
 
 .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     padding: 14px 0;
     border-bottom: 1px solid #f1f5f9;
 }
@@ -146,9 +172,36 @@ button:hover {
     border-bottom: none;
 }
 
+.menu-item-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    object-fit: cover;
+}
+
+.main-menu-card {
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 12px;
+}
+
+.submenu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .menu-item-meta {
     color: #475569;
     font-size: 0.92rem;
+}
+
+.menu-item-label {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-left: 10px;
 }
 
 .menu-empty {

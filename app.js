@@ -1,14 +1,17 @@
 let API;
 const currentMenu = {
     title: "My Trimble Extension",
+    icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
     command: "main_nav_menu_clicked",
     subMenus: [
         {
             title: "Extension API",
+            icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
             command: "render_tc_extension_api"
         },
         {
             title: "Embed API",
+            icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
             command: "render_tc_embed_api"
         }
     ]
@@ -29,24 +32,45 @@ function renderMenuList() {
         return;
     }
 
-    listEl.innerHTML = currentMenu.subMenus
-        .map((item) => `
-            <div class="menu-item">
-                <div><strong>${item.title}</strong></div>
-                <div class="menu-item-meta">command: ${item.command}</div>
+    const mainIcon = currentMenu.icon ? `<img class="menu-item-icon main-menu-icon" src="${currentMenu.icon}" alt="${currentMenu.title}">` : "";
+    const mainMenuHtml = `
+        <div class="menu-item main-menu-card">
+            ${mainIcon}
+            <div>
+                <div><strong>${currentMenu.title}</strong></div>
+                <div class="menu-item-meta">Main command: ${currentMenu.command}</div>
             </div>
-        `)
-        .join("");
+        </div>
+    `;
+
+    const submenuHtml = currentMenu.subMenus.length
+        ? `<div class="submenu-list">
+                ${currentMenu.subMenus
+                    .map((item) => `
+                        <div class="menu-item submenu-item">
+                            ${item.icon ? `<img class="menu-item-icon" src="${item.icon}" alt="${item.title}">` : ""}
+                            <div>
+                                <div><strong>${item.title}</strong> <span class="menu-item-label">(${item.command})</span></div>
+                                <div class="menu-item-meta">Sub-menu command</div>
+                            </div>
+                        </div>
+                    `)
+                    .join("")}
+            </div>`
+        : "<div class=\"menu-empty\">No sub-menu items added yet.</div>";
+
+    listEl.innerHTML = mainMenuHtml + submenuHtml;
 }
 
 function addSubMenu() {
     const title = document.getElementById("subMenuTitle")?.value.trim();
     const command = document.getElementById("subMenuCommand")?.value.trim();
+    const icon = document.getElementById("subMenuIcon")?.value.trim();
     if (!title || !command) {
         updateStatus("Sub-menu title and command are required.", true);
         return;
     }
-    currentMenu.subMenus.push({ title, command });
+    currentMenu.subMenus.push({ title, command, icon });
     renderMenuList();
     updateStatus(`Added submenu: ${title}`);
 }
@@ -58,10 +82,12 @@ async function setMenu() {
     }
     currentMenu.title = document.getElementById("mainMenuTitle")?.value.trim() || currentMenu.title;
     currentMenu.command = document.getElementById("mainMenuCommand")?.value.trim() || currentMenu.command;
+    currentMenu.icon = document.getElementById("mainMenuIcon")?.value.trim() || currentMenu.icon;
 
     try {
         const menuConfig = {
             title: currentMenu.title,
+            icon: currentMenu.icon,
             command: currentMenu.command,
             subMenus: currentMenu.subMenus
         };

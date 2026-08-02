@@ -23,11 +23,19 @@
     </nav>
 
     <div class="tab-content active" id="documents">
-        <section class="example-card">
-            <h3>Project Documents</h3>
-            <p>Browse project documents loaded by your Trimble extension.</p>
-            <div id="folders">Loading folders...</div>
-        </section>
+        <div class="documents-layout">
+            <aside class="left-panel">
+                <div class="left-panel-section-title">ToDo</div>
+                <div id="menuList" class="menu-list"></div>
+            </aside>
+            <div class="content-panel">
+                <section class="example-card">
+                    <h3>Project Documents</h3>
+                    <p>Browse project documents loaded by your Trimble extension.</p>
+                    <div id="folders">Loading folders...</div>
+                </section>
+            </div>
+        </div>
     </div>
 
     <div class="tab-content" id="menu">
@@ -44,6 +52,10 @@
                     <label for="mainMenuCommand">Main menu command</label>
                     <input id="mainMenuCommand" type="text" value="main_nav_menu_clicked">
                 </div>
+                <div class="field">
+                    <label for="mainMenuIcon">Main menu icon</label>
+                    <input id="mainMenuIcon" type="text" value="https://venkateshvupputuri-droid.github.io/venkatesh/icon.png">
+                </div>
             </div>
 
             <div class="form-row">
@@ -54,6 +66,10 @@
                 <div class="field">
                     <label for="subMenuCommand">Sub-menu command</label>
                     <input id="subMenuCommand" type="text" value="render_tc_extension_api">
+                </div>
+                <div class="field">
+                    <label for="subMenuIcon">Sub-menu icon</label>
+                    <input id="subMenuIcon" type="text" value="https://venkateshvupputuri-droid.github.io/venkatesh/icon.png">
                 </div>
             </div>
 
@@ -71,8 +87,6 @@
             <div class="button-row">
                 <button id="activateMenuButton">Activate menu item</button>
             </div>
-
-            <div id="menuList" class="menu-list"></div>
         </section>
     </div>
 

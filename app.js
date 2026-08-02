@@ -298,11 +298,7 @@ window.addEventListener("message", (event) => {
 
 async function start() {
     try {
-        API = await TrimbleConnectWorkspace.connect(window.parent);
-        console.log("Connected to Trimble Connect workspace API", API);
-        updateStatus("Connected to Trimble Connect workspace API.");
-        await setMenu();
-        await loadCwaFolders();
+        await connectToWorkspace();
     } catch (err) {
         console.error("Workspace API connect failed", err);
         updateStatus("Not connected to Trimble Connect workspace API.", true);
@@ -321,6 +317,33 @@ async function start() {
     }
 }
 
+async function connectToWorkspace() {
+    const debugEl = document.getElementById("apiDebug");
+    try {
+        API = await TrimbleConnectWorkspace.connect(window.parent);
+        console.log("Connected to Trimble Connect workspace API", API);
+        updateStatus("Connected to Trimble Connect workspace API.");
+        if (debugEl) {
+            try {
+                const keys = Object.keys(API || {}).sort();
+                debugEl.style.display = "block";
+                debugEl.textContent = `API keys: ${keys.join(', ')}`;
+            } catch (e) {
+                debugEl.textContent = "Connected (unable to enumerate API).";
+            }
+        }
+        await setMenu();
+        await loadCwaFolders();
+    } catch (err) {
+        console.error("Workspace API connect failed", err);
+        updateStatus("Not connected to Trimble Connect workspace API.", true);
+        if (debugEl) {
+            debugEl.style.display = "block";
+            debugEl.textContent = `Connect error: ${err && err.message ? err.message : String(err)}`;
+        }
+    }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("addSubmenuButton")?.addEventListener("click", addSubMenu);
     document.getElementById("setMenuButton")?.addEventListener("click", setMenu);
@@ -333,5 +356,6 @@ window.addEventListener("DOMContentLoaded", () => {
     initTabs();
     renderMenuList();
     setActiveTabFromRoute();
+    document.getElementById("connectButton")?.addEventListener("click", connectToWorkspace);
     start();
 });

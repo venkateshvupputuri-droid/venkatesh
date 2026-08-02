@@ -46,7 +46,11 @@
         </div>
     </div>
 
-    <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API...</div>
+    <div class="status-row">
+        <button id="connectButton" class="action">Connect</button>
+        <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API...</div>
+    </div>
+    <pre id="apiDebug" class="api-debug" style="display:none; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
 </div>
 
 <script type="module" src="app.js"></script>

@@ -2,7 +2,12 @@ let API;
 const currentMenu = {
     title: "My Trimble Extension",
     command: "main_nav_menu_clicked",
-    subMenus: []
+    subMenus: [
+        {
+            title: "Extension API",
+            command: "render_tc_extension_api"
+        }
+    ]
 };
 
 function updateStatus(text, isError = false) {
@@ -109,6 +114,7 @@ async function start() {
         API = await TrimbleConnectWorkspace.connect(window.parent);
         console.log("Connected to Trimble Connect workspace API", API);
         updateStatus("Connected to Trimble Connect workspace API.");
+        await setMenu();
     } catch (err) {
         console.error("Workspace API connect failed", err);
         updateStatus("Not connected to Trimble Connect workspace API.", true);

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Documents Browser</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+</head>
+
+<body>
+
+<div class="header">
+    <h2>📁 Project Documents</h2>
+</div>
+
+<div id="folders">Loading folders...</div>
+
+<section class="example-card">
+    <h3>Example: ui.setMenu & ui.setActiveMenuItem</h3>
+    <p>Configure the project extension navigation menu and activate a submenu item.</p>
+
+    <div class="form-row">
+        <div class="field">
+            <label for="mainMenuTitle">Main menu title</label>
+            <input id="mainMenuTitle" type="text" value="My Trimble Extension">
+        </div>
+        <div class="field">
+            <label for="mainMenuCommand">Main menu command</label>
+            <input id="mainMenuCommand" type="text" value="main_nav_menu_clicked">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="field">
+            <label for="subMenuTitle">Sub-menu title</label>
+            <input id="subMenuTitle" type="text" value="Extension API">
+        </div>
+        <div class="field">
+            <label for="subMenuCommand">Sub-menu command</label>
+            <input id="subMenuCommand" type="text" value="render_tc_extension_api">
+        </div>
+    </div>
+
+    <div class="button-row">
+        <button id="addSubmenuButton">Add sub-menu</button>
+        <button id="setMenuButton">Set menu</button>
+    </div>
+
+    <div class="form-row">
+        <div class="field full-width">
+            <label for="activateCommand">Activate command</label>
+            <input id="activateCommand" type="text" value="render_tc_extension_api">
+        </div>
+    </div>
+    <div class="button-row">
+        <button id="activateMenuButton">Activate menu item</button>
+    </div>
+
+    <div id="menuList" class="menu-list"></div>
+    <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API...</div>
+</section>
+
+
+
+<script type="module" src="app.js"></script>
+
+</body>
+
+</html>

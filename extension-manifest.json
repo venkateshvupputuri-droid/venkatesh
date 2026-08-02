@@ -1,0 +1,7 @@
+{
+  "title": "My Trimble Extension",
+  "description": "Sample Extension",
+  "icon": "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
+  "url": "https://venkateshvupputuri-droid.github.io/venkatesh/index.html",
+  "enabled": true
+}

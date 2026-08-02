@@ -1,0 +1,29 @@
+body{
+
+    font-family:Arial;
+    margin:0;
+    background:#fafafa;
+
+}
+
+.header{
+
+    background:#005A9C;
+    color:white;
+    padding:10px;
+
+}
+
+.folder{
+
+    padding:8px;
+    border-bottom:1px solid #ddd;
+    cursor:pointer;
+
+}
+
+.folder:hover{
+
+    background:#efefef;
+
+}

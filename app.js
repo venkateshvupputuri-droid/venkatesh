@@ -193,12 +193,14 @@ async function loadStrFiles(selectedFolder) {
         strSelect.innerHTML = "<option>Select a CWA folder first</option>";
         strSelect.disabled = true;
         strMessage.textContent = "";
+        await loadDataTableForFolder(null);
         return;
     }
 
     strSelect.innerHTML = "<option>Loading IFC files...</option>";
     strSelect.disabled = true;
     strMessage.textContent = "";
+    await loadDataTableForFolder(selectedFolder);
 
     try {
         let items = [];
@@ -258,7 +260,8 @@ function normalizeFolderItems(data) {
                 return {
                     name: item.name || item.title || item.folderName || item.displayName || item.label,
                     id: item.id,
-                    items: item.items || item.children || item.data || item.files
+                    items: item.items || item.children || item.data || item.files,
+                    rawItem: item
                 };
             }
             return null;
@@ -275,6 +278,66 @@ function renderCompletedList(items) {
         return "<div class=\"menu-empty\">No completed folders found.</div>";
     }
     return `<ul class="completed-list">${rows.join("")}</ul>`;
+}
+
+async function loadDataTableForFolder(selectedFolder) {
+    const debugEl = document.getElementById("apiDebug");
+    const dataTableMessage = document.getElementById("dataTableMessage");
+    if (dataTableMessage) {
+        dataTableMessage.textContent = "";
+    }
+
+    if (!API || !API.dataTable) {
+        if (dataTableMessage) {
+            dataTableMessage.textContent = "Trimble Connect DataTable API is not available.";
+        }
+        return;
+    }
+
+    if (!selectedFolder || !selectedFolder.name) {
+        if (dataTableMessage) {
+            dataTableMessage.textContent = "No selected folder name available for DataTable filtering.";
+        }
+        return;
+    }
+
+    if (typeof API.dataTable.setConfig !== "function") {
+        if (dataTableMessage) {
+            dataTableMessage.textContent = "DataTable setConfig is not supported by this API version.";
+        }
+        return;
+    }
+
+    try {
+        const currentConfig = typeof API.dataTable.getConfig === "function"
+            ? await API.dataTable.getConfig()
+            : {};
+
+        const newConfig = {
+            ...(currentConfig || {}),
+            filter: selectedFolder.name,
+            mode: currentConfig?.mode || "all"
+        };
+
+        await API.dataTable.setConfig(newConfig);
+
+        if (dataTableMessage) {
+            dataTableMessage.textContent = `DataTable filter applied: ${selectedFolder.name}`;
+        }
+
+        if (debugEl) {
+            let columns = [];
+            if (typeof API.dataTable.getAllColumns === "function") {
+                columns = await API.dataTable.getAllColumns();
+            }
+            debugEl.textContent += `\nDataTable filter '${selectedFolder.name}' applied. Columns: ${Array.isArray(columns) ? columns.map((col) => col.field || col.label).join(", ") : "n/a"}`;
+        }
+    } catch (error) {
+        console.error(error);
+        if (dataTableMessage) {
+            dataTableMessage.textContent = `DataTable update failed: ${error?.message || String(error)}`;
+        }
+    }
 }
 
 function escapeHtml(text) {

@@ -142,7 +142,7 @@ button:hover {
 .left-panel {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .left-panel-section-title {
@@ -151,6 +151,15 @@ button:hover {
     letter-spacing: 0.08em;
     color: #334155;
     margin-bottom: 8px;
+}
+
+.left-panel-item {
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #dbe7f0;
+    border-radius: 10px;
+    color: #0f172a;
+    font-weight: 600;
 }
 
 .menu-list {

@@ -139,6 +139,87 @@ async function updateExtensionStatus() {
     }
 }
 
+async function loadCompletedData() {
+    const output = document.getElementById("completedData");
+    if (!output) return;
+    output.textContent = "Loading completed data...";
+
+    if (!API) {
+        output.textContent = "Not connected to Trimble Connect workspace API.";
+        return;
+    }
+
+    try {
+        let completedItems;
+
+        if (API.data) {
+            if (typeof API.data.getCompleted === "function") {
+                completedItems = await API.data.getCompleted();
+            } else if (typeof API.data.listCompleted === "function") {
+                completedItems = await API.data.listCompleted();
+            } else if (typeof API.data.getFolders === "function") {
+                completedItems = await API.data.getFolders();
+            }
+        }
+
+        if (!completedItems && API.project && typeof API.project.getProject === "function") {
+            completedItems = await API.project.getProject();
+        }
+
+        const folderNames = extractFolderNames(completedItems);
+        if (folderNames.length > 0) {
+            output.innerHTML = renderCompletedList(folderNames);
+            return;
+        }
+
+        output.textContent = "Completed explorer data is not available from the current workspace API.";
+    } catch (error) {
+        console.error(error);
+        output.textContent = `Failed to load completed data: ${error.message || error}`;
+    }
+}
+
+function extractFolderNames(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+        return value.flatMap((item) => extractFolderNames(item));
+    }
+    if (typeof value === "object") {
+        const folderName = value.name || value.title || value.folderName || value.displayName || value.label;
+        if (folderName) {
+            return [String(folderName)];
+        }
+        const nested = [];
+        for (const key of ["items", "folders", "data", "results", "children"]) {
+            if (Array.isArray(value[key])) {
+                nested.push(...extractFolderNames(value[key]));
+            }
+        }
+        return nested;
+    }
+    return [];
+}
+
+function renderCompletedList(items) {
+    const uniqueItems = Array.from(new Set(items));
+    const rows = uniqueItems.map((name) => `
+        <li class="completed-item">${escapeHtml(name)}</li>
+    `);
+    if (!rows.length) {
+        return "<div class=\"menu-empty\">No completed folders found.</div>";
+    }
+    return `<ul class="completed-list">${rows.join("")}</ul>`;
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 function setActiveTab(tabId) {
     document.querySelectorAll(".tab-button").forEach((button) => {
         button.classList.toggle("active", button.dataset.tab === tabId);
@@ -201,9 +282,14 @@ async function start() {
         console.log("Connected to Trimble Connect workspace API", API);
         updateStatus("Connected to Trimble Connect workspace API.");
         await setMenu();
+        await loadCompletedData();
     } catch (err) {
         console.error("Workspace API connect failed", err);
         updateStatus("Not connected to Trimble Connect workspace API.", true);
+        const output = document.getElementById("completedData");
+        if (output) {
+            output.textContent = "Unable to load completed data because the API connection failed.";
+        }
     }
 }
 

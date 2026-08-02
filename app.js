@@ -107,12 +107,31 @@ async function loadCwaFolders() {
     }
 
     try {
+        // First attempt: try to read Explorer -> Completed specifically
+        const explorerFolders = await fetchExplorerCompleted();
+        if (explorerFolders && explorerFolders.length) {
+            cwaSelect.innerHTML = explorerFolders
+                .map((folder) => `<option value="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</option>`)
+                .join("");
+
+            cwaSelect.onchange = async () => {
+                const selected = explorerFolders.find((f) => f.name === cwaSelect.value);
+                await loadStrFiles(selected);
+            };
+
+            await loadStrFiles(explorerFolders[0]);
+            return;
+        }
+
+        // Fallback: generic completed/folders calls
         let completedItems;
         if (API.data) {
             if (typeof API.data.getCompleted === "function") {
                 completedItems = await API.data.getCompleted();
             } else if (typeof API.data.listCompleted === "function") {
                 completedItems = await API.data.listCompleted();
+            } else if (typeof API.data.getFolders === "function") {
+                completedItems = await API.data.getFolders();
             }
         }
 
@@ -126,10 +145,10 @@ async function loadCwaFolders() {
             .map((folder) => `<option value="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</option>`)
             .join("");
 
-        cwaSelect.addEventListener("change", async () => {
+        cwaSelect.onchange = async () => {
             const selected = cwaFolders.find((folder) => folder.name === cwaSelect.value);
             await loadStrFiles(selected);
-        });
+        };
 
         await loadStrFiles(cwaFolders[0]);
     } catch (error) {
@@ -342,6 +361,64 @@ async function connectToWorkspace() {
             debugEl.textContent = `Connect error: ${err && err.message ? err.message : String(err)}`;
         }
     }
+}
+
+async function fetchExplorerCompleted() {
+    const debugEl = document.getElementById("apiDebug");
+    if (!API || !API.data) return [];
+
+    const candidates = [
+        { name: 'getExplorer', fn: () => API.data.getExplorer?.() },
+        { name: 'getCompleted', fn: () => API.data.getCompleted?.() },
+        { name: 'listCompleted', fn: () => API.data.listCompleted?.() },
+        { name: 'getFolders', fn: () => API.data.getFolders?.() },
+        { name: 'listFolders', fn: () => API.data.listFolders?.() },
+        { name: 'getProject', fn: () => API.data.getProject?.() },
+        { name: 'project.getProject', fn: () => API.project?.getProject?.() }
+    ];
+
+    for (const c of candidates) {
+        if (typeof c.fn !== 'function') continue;
+        try {
+            const res = await c.fn();
+            if (!res) continue;
+
+            const folders = normalizeFolderItems(res);
+            // Try to find a top-level 'Completed' folder
+            const completed = folders.find(f => /completed/i.test(f.name));
+            if (completed && (Array.isArray(completed.items) && completed.items.length)) {
+                const children = normalizeFolderItems(completed.items);
+                if (debugEl) debugEl.textContent += `\nExplorer method ${c.name} -> found Completed with ${children.length} children.`;
+                return children;
+            }
+
+            // If no top-level Completed, search recursively for any Completed node
+            const found = [];
+            (function walk(node) {
+                if (!node) return;
+                if (Array.isArray(node)) return node.forEach(walk);
+                if (typeof node === 'object') {
+                    const n = node.name || node.title || node.label || node.displayName;
+                    if (n && /completed/i.test(n) && (node.items || node.children || node.data || node.files)) {
+                        found.push(node);
+                        return;
+                    }
+                    for (const key of ['items', 'children', 'folders', 'data', 'results', 'files']) {
+                        if (node[key]) walk(node[key]);
+                    }
+                }
+            })(res);
+
+            if (found.length) {
+                const list = normalizeFolderItems(found[0].items || found[0].children || found[0].data || found[0].files);
+                if (debugEl) debugEl.textContent += `\nExplorer method ${c.name} -> recursive Completed found with ${list.length} children.`;
+                if (list.length) return list;
+            }
+        } catch (err) {
+            if (debugEl) debugEl.textContent += `\nExplorer method ${c.name} threw: ${err && err.message ? err.message : String(err)}`;
+        }
+    }
+    return [];
 }
 
 window.addEventListener("DOMContentLoaded", () => {

@@ -70,55 +70,6 @@ function addSubMenu() {
     updateStatus(`Added submenu: ${title}`);
 }
 
-async function setMenu() {
-    if (!API || !API.ui) {
-        updateStatus("Trimble Connect workspace API is not connected.", true);
-        return;
-    }
-    currentMenu.title = document.getElementById("mainMenuTitle")?.value.trim() || currentMenu.title;
-    currentMenu.command = document.getElementById("mainMenuCommand")?.value.trim() || currentMenu.command;
-    currentMenu.icon = document.getElementById("mainMenuIcon")?.value.trim() || currentMenu.icon;
-
-    try {
-        const menuConfig = {
-            title: currentMenu.title,
-            icon: currentMenu.icon,
-            command: currentMenu.command,
-            subMenus: currentMenu.subMenus
-        };
-        await API.ui.setMenu(menuConfig);
-        updateStatus("Menu configured successfully.");
-    } catch (error) {
-        console.error(error);
-        updateStatus("Failed to set menu. Check console for errors.", true);
-    }
-}
-
-async function activateMenuItem(commandOverride) {
-    if (!API || !API.ui) {
-        updateStatus("Trimble Connect workspace API is not connected.", true);
-        return;
-    }
-    const command = commandOverride || document.getElementById("activateCommand")?.value.trim();
-    if (!command) {
-        updateStatus("Enter a valid submenu command to activate.", true);
-        return;
-    }
-
-    try {
-        await API.ui.setActiveMenuItem(command);
-        updateStatus(`Activated command: ${command}`);
-        if (command === "render_tc_embed_api") {
-            setActiveTab("embed");
-        } else if (command === "render_tc_extension_api") {
-            setActiveTab("menu");
-        }
-    } catch (error) {
-        console.error(error);
-        updateStatus("Failed to activate menu item. Check console for errors.", true);
-    }
-}
-
 async function updateExtensionStatus() {
     if (!API || !API.extension) {
         updateStatus("Trimble Connect workspace API is not connected.", true);

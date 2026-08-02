@@ -1,7 +1,7 @@
 {
-  "title": "Test",
-  "description": "My Test extension",
-  "url": "https://venkatesh.github.io/test-extension/index.html",
-  "icon": "https://venkatesh.github.io/test-extension/icon.png",
+  "title": "Tekla Reports",
+  "description": "Project Reporting Tool",
+  "icon": "https://yourwebsite.com/icon.png",
+  "url": "https://yourwebsite.com/index.html",
   "enabled": true
 }

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Documents Browser</title>
+    <title>My Trimble Extension</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
 </head>
@@ -11,57 +11,109 @@
 <body>
 
 <div class="header">
-    <h2>📁 Project Documents</h2>
+    <h2>📁 My Trimble Extension</h2>
 </div>
 
-<div id="folders">Loading folders...</div>
+<div class="tab-panel">
+    <nav class="tabs" aria-label="Extension pages">
+        <button class="tab-button active" data-tab="documents" type="button">Documents</button>
+        <button class="tab-button" data-tab="menu" type="button">Extension API</button>
+        <button class="tab-button" data-tab="embed" type="button">Embed API</button>
+        <button class="tab-button" data-tab="status" type="button">Status</button>
+    </nav>
 
-<section class="example-card">
-    <h3>Example: ui.setMenu & ui.setActiveMenuItem</h3>
-    <p>Configure the project extension navigation menu and activate a submenu item.</p>
-
-    <div class="form-row">
-        <div class="field">
-            <label for="mainMenuTitle">Main menu title</label>
-            <input id="mainMenuTitle" type="text" value="My Trimble Extension">
-        </div>
-        <div class="field">
-            <label for="mainMenuCommand">Main menu command</label>
-            <input id="mainMenuCommand" type="text" value="main_nav_menu_clicked">
-        </div>
+    <div class="tab-content active" id="documents">
+        <section class="example-card">
+            <h3>Project Documents</h3>
+            <p>Browse project documents loaded by your Trimble extension.</p>
+            <div id="folders">Loading folders...</div>
+        </section>
     </div>
 
-    <div class="form-row">
-        <div class="field">
-            <label for="subMenuTitle">Sub-menu title</label>
-            <input id="subMenuTitle" type="text" value="Extension API">
-        </div>
-        <div class="field">
-            <label for="subMenuCommand">Sub-menu command</label>
-            <input id="subMenuCommand" type="text" value="render_tc_extension_api">
-        </div>
+    <div class="tab-content" id="menu">
+        <section class="example-card">
+            <h3>Extension menu configuration</h3>
+            <p>Set the Trimble Connect extension menu and subpages from this panel.</p>
+
+            <div class="form-row">
+                <div class="field">
+                    <label for="mainMenuTitle">Main menu title</label>
+                    <input id="mainMenuTitle" type="text" value="My Trimble Extension">
+                </div>
+                <div class="field">
+                    <label for="mainMenuCommand">Main menu command</label>
+                    <input id="mainMenuCommand" type="text" value="main_nav_menu_clicked">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="field">
+                    <label for="subMenuTitle">Sub-menu title</label>
+                    <input id="subMenuTitle" type="text" value="Extension API">
+                </div>
+                <div class="field">
+                    <label for="subMenuCommand">Sub-menu command</label>
+                    <input id="subMenuCommand" type="text" value="render_tc_extension_api">
+                </div>
+            </div>
+
+            <div class="button-row">
+                <button id="addSubmenuButton">Add sub-menu</button>
+                <button id="setMenuButton">Set menu</button>
+            </div>
+
+            <div class="form-row">
+                <div class="field full-width">
+                    <label for="activateCommand">Activate command</label>
+                    <input id="activateCommand" type="text" value="render_tc_extension_api">
+                </div>
+            </div>
+            <div class="button-row">
+                <button id="activateMenuButton">Activate menu item</button>
+            </div>
+
+            <div id="menuList" class="menu-list"></div>
+        </section>
     </div>
 
-    <div class="button-row">
-        <button id="addSubmenuButton">Add sub-menu</button>
-        <button id="setMenuButton">Set menu</button>
+    <div class="tab-content" id="embed">
+        <section class="example-card">
+            <h3>Embed API</h3>
+            <p>This page is designed to mirror the Trimble Connect extension embed experience.</p>
+            <div class="embed-info">
+                <p>When Trimble Connect activates <strong>render_tc_embed_api</strong>, this page can display the embed page content.</p>
+            </div>
+            <div class="form-row">
+                <div class="field full-width">
+                    <label for="activateEmbedCommand">Embed command</label>
+                    <input id="activateEmbedCommand" type="text" value="render_tc_embed_api">
+                </div>
+            </div>
+            <div class="button-row">
+                <button id="activateEmbedButton">Activate Embed API</button>
+            </div>
+        </section>
     </div>
 
-    <div class="form-row">
-        <div class="field full-width">
-            <label for="activateCommand">Activate command</label>
-            <input id="activateCommand" type="text" value="render_tc_extension_api">
-        </div>
-    </div>
-    <div class="button-row">
-        <button id="activateMenuButton">Activate menu item</button>
+    <div class="tab-content" id="status">
+        <section class="example-card">
+            <h3>Extension status</h3>
+            <p>Send a status update to Trimble Connect from this page.</p>
+
+            <div class="form-row">
+                <div class="field full-width">
+                    <label for="statusText">Status message</label>
+                    <input id="statusText" type="text" value="My Trimble extension is ready.">
+                </div>
+            </div>
+            <div class="button-row">
+                <button id="updateStatusButton">Set status message</button>
+            </div>
+        </section>
     </div>
 
-    <div id="menuList" class="menu-list"></div>
     <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API...</div>
-</section>
-
-
+</div>
 
 <script type="module" src="app.js"></script>
 

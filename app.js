@@ -6,6 +6,10 @@ const currentMenu = {
         {
             title: "Extension API",
             command: "render_tc_extension_api"
+        },
+        {
+            title: "Embed API",
+            command: "render_tc_embed_api"
         }
     ]
 };
@@ -69,12 +73,12 @@ async function setMenu() {
     }
 }
 
-async function activateMenuItem() {
+async function activateMenuItem(commandOverride) {
     if (!API || !API.ui) {
         updateStatus("Trimble Connect workspace API is not connected.", true);
         return;
     }
-    const command = document.getElementById("activateCommand")?.value.trim();
+    const command = commandOverride || document.getElementById("activateCommand")?.value.trim();
     if (!command) {
         updateStatus("Enter a valid submenu command to activate.", true);
         return;
@@ -83,6 +87,11 @@ async function activateMenuItem() {
     try {
         await API.ui.setActiveMenuItem(command);
         updateStatus(`Activated command: ${command}`);
+        if (command === "render_tc_embed_api") {
+            setActiveTab("embed");
+        } else if (command === "render_tc_extension_api") {
+            setActiveTab("menu");
+        }
     } catch (error) {
         console.error(error);
         updateStatus("Failed to activate menu item. Check console for errors.", true);
@@ -109,6 +118,62 @@ async function updateExtensionStatus() {
     }
 }
 
+function setActiveTab(tabId) {
+    document.querySelectorAll(".tab-button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === tabId);
+    });
+    document.querySelectorAll(".tab-content").forEach((section) => {
+        section.classList.toggle("active", section.id === tabId);
+    });
+}
+
+function initTabs() {
+    document.querySelectorAll(".tab-button").forEach((button) => {
+        button.addEventListener("click", () => {
+            setActiveTab(button.dataset.tab);
+        });
+    });
+}
+
+function getRouteCommand() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has("command")) {
+            return params.get("command");
+        }
+    } catch (ignore) {
+        // ignore
+    }
+    const path = window.location.pathname.split("/").filter(Boolean).pop();
+    return path;
+}
+
+function setActiveTabFromRoute() {
+    const command = getRouteCommand();
+    if (command === "render_tc_embed_api") {
+        setActiveTab("embed");
+    } else if (command === "render_tc_extension_api") {
+        setActiveTab("menu");
+    } else {
+        setActiveTab("documents");
+    }
+}
+
+window.addEventListener("message", (event) => {
+    if (!event.data || typeof event.data !== "object") {
+        return;
+    }
+    const command = event.data.command;
+    if (!command) {
+        return;
+    }
+    if (command === "render_tc_embed_api") {
+        setActiveTab("embed");
+    } else if (command === "render_tc_extension_api") {
+        setActiveTab("menu");
+    }
+});
+
 async function start() {
     try {
         API = await TrimbleConnectWorkspace.connect(window.parent);
@@ -124,8 +189,14 @@ async function start() {
 window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("addSubmenuButton")?.addEventListener("click", addSubMenu);
     document.getElementById("setMenuButton")?.addEventListener("click", setMenu);
-    document.getElementById("activateMenuButton")?.addEventListener("click", activateMenuItem);
+    document.getElementById("activateMenuButton")?.addEventListener("click", () => activateMenuItem());
+    document.getElementById("activateEmbedButton")?.addEventListener("click", () => {
+        const command = document.getElementById("activateEmbedCommand")?.value.trim();
+        activateMenuItem(command || "render_tc_embed_api");
+    });
     document.getElementById("updateStatusButton")?.addEventListener("click", updateExtensionStatus);
+    initTabs();
     renderMenuList();
+    setActiveTabFromRoute();
     start();
 });

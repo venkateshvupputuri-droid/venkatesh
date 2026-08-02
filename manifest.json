@@ -1,7 +1,7 @@
 {
   "icon": "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
   "title": "My Trimble Extension",
-  "url": "https://venkateshvupputuri-droid.github.io/venkatesh/index.html",
+  "url": "https://venkateshvupputuri-droid.github.io/venkatesh/",
   "description": "Trimble Connect project extension page for custom UI and menu actions",
   "configCommand": "do_config",
   "enabled": true

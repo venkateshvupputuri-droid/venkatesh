@@ -1,62 +1,39 @@
-<!DOCTYPE html>
-<html>
-
+<!doctype html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My Trimble Extension</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
 </head>
-
 <body>
+    <header class="header">
+        <h2>📁 My Trimble Extension</h2>
+    </header>
 
-<div class="header">
-    <h2>📁 My Trimble Extension</h2>
-</div>
-
-<div class="tab-panel">
-    <nav class="tabs" aria-label="Extension pages">
-        <button class="tab-button active" data-tab="assignment" type="button">Assignment</button>
-    </nav>
-
-    <div class="tab-content active" id="assignment">
-        <div class="documents-layout">
-            <aside class="left-panel">
-                <div class="left-panel-section-title">Data</div>
-                <div class="left-panel-item">Explore project data using the dropdowns</div>
-            </aside>
-            <div class="content-panel">
-                <section class="example-card">
-                    <h3>Assignment</h3>
-                    <div class="field">
-                        <label for="cwaSelect">CWA</label>
-                        <select id="cwaSelect" class="dropdown">
-                            <option>Loading CWA folders...</option>
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label for="strSelect">STR</label>
-                        <select id="strSelect" class="dropdown">
-                            <option>Select a CWA folder first</option>
-                        </select>
-                        <div id="strMessage" class="input-note"></div>
-                        <div id="dataTableMessage" class="input-note"></div>
-                    </div>
-                </section>
+    <main class="tab-panel">
+        <section id="assignment" class="tab-content active">
+            <div class="documents-layout">
+                <aside class="left-panel">
+                    <div class="left-panel-section-title">Data</div>
+                    <div class="left-panel-item">Explore project data using the dropdowns</div>
+                </aside>
+                <div class="content-panel">
+                    <section class="example-card">
+                        <h3>Assignment</h3>
+                        <p>Your Assignment page is now opened from Trimble Connect's left navigation.</p>
+                    </section>
+                </div>
             </div>
+        </section>
+
+        <div class="status-row">
+            <button id="connectButton" class="action" type="button">Connect</button>
+            <button id="refreshButton" class="action" type="button">Refresh navigation</button>
         </div>
-    </div>
-
-    <div class="status-row">
-        <button id="connectButton" class="action">Connect</button>
-        <button id="refreshButton" class="action">Refresh</button>
-        <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API...</div>
-    </div>
-    <pre id="apiDebug" class="api-debug" style="display:none; white-space:pre-wrap; max-height:160px; overflow:auto;"></pre>
-</div>
-
-<script type="module" src="app.js"></script>
-
+        <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API…</div>
+    </main>
+    <script type="module" src="app.js"></script>
 </body>
-
 </html>

@@ -1,7 +1,8 @@
 # My Trimble Extension
 
-This extension connects to the Trimble Connect workspace API and discovers
-`Completed` folders plus `.ifc` files from explorer selection events.
+This project registers **My Trimble Extension** in the Trimble Connect project
+left navigation. Its **Assignment** submenu is activated when the extension is
+enabled in the project.
 
 ## Local deployment
 
@@ -17,5 +18,12 @@ npm install
 npm run start
 ```
 
-3. Open the served page at `http://localhost:8080` and load it as your
-Trimble Connect extension URL.
+3. Deploy the site to the HTTPS URL in `manifest.json` (the included GitHub
+   Pages workflow deploys after a push to `main`).
+4. In the Trimble Connect project, open **Settings → Extensions**, add or edit
+   the extension with the deployed manifest URL, and enable it. Reload the
+   project page; the extension connects to the host and registers its left
+   navigation item automatically.
+
+`http://localhost:8080` is useful for development only; a live project must be
+able to load the extension URL over HTTPS.

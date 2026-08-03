@@ -1,11 +1,11 @@
 let api;
 
-// Trimble Connect renders this as the extension's entry in the project left
-// navigation. The submenu is the page that opens inside this extension.
+// The top-level item is only a navigation group. A command on it makes Trimble
+// try to resolve it as a separate extension route, which results in
+// "Extension not found". Commands belong to the selectable submenu items.
 const menu = {
     title: "My Trimble Extension",
     icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
-    command: "my_trimble_extension",
     subMenus: [
         {
             title: "Assignment",
@@ -32,7 +32,6 @@ async function registerLeftNavigation() {
     }
 
     await api.ui.setMenu(menu);
-    await api.ui.setActiveMenuItem("assignment");
 }
 
 async function connectToWorkspace() {
@@ -54,11 +53,11 @@ async function connectToWorkspace() {
 function onWorkspaceEvent(event, eventArgs) {
     if (event !== "extension.command") return;
 
-    const command = eventArgs?.data ?? eventArgs;
-    if (command === "assignment") {
-        showPage(command);
-        api?.extension?.requestFocus?.();
-    }
+    const command = eventArgs?.data;
+    if (command !== "assignment") return;
+
+    showPage(command);
+    updateStatus("Assignment opened from the Trimble Connect navigation.");
 }
 
 document.addEventListener("DOMContentLoaded", () => {

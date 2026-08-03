@@ -1,7 +1,4 @@
 let API;
-let discoveredFolders = [];
-let discoveredIfcFiles = [];
-let selectedCwaFolder = null;
 const currentMenu = {
     title: "My Trimble Extension",
     icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
@@ -38,17 +35,98 @@ async function setMenu() {
     }
 }
 
+async function activateMenuItem(command = "render_tc_extension_api") {
+    if (!API || !API.extension) return;
+    if (typeof API.extension.activateMenuItem === "function") {
+        try {
+            await API.extension.activateMenuItem(command);
+        } catch (error) {
+            console.warn("Extension activateMenuItem failed:", error);
+        }
+    }
+}
+
+function renderMenuList() {
+    const listEl = document.getElementById("menuList");
+    if (!listEl) return;
+    if (!currentMenu.subMenus.length) {
+        listEl.innerHTML = "<div class=\"menu-empty\">No sub-menu items added yet.</div>";
+        return;
+    }
+
+    const mainIcon = currentMenu.icon ? `<img class="menu-item-icon main-menu-icon" src="${currentMenu.icon}" alt="${currentMenu.title}">` : "";
+    const mainMenuHtml = `
+        <div class="menu-item main-menu-card">
+            ${mainIcon}
+            <div>
+                <div><strong>${currentMenu.title}</strong></div>
+                <div class="menu-item-meta">Main command: ${currentMenu.command}</div>
+            </div>
+        </div>
+    `;
+
+    const submenuHtml = currentMenu.subMenus.length
+        ? `<div class="submenu-list">
+                ${currentMenu.subMenus
+                    .map((item) => `
+                        <div class="menu-item submenu-item">
+                            ${item.icon ? `<img class="menu-item-icon" src="${item.icon}" alt="${item.title}">` : ""}
+                            <div>
+                                <div><strong>${item.title}</strong> <span class="menu-item-label">(${item.command})</span></div>
+                                <div class="menu-item-meta">Sub-menu command</div>
+                            </div>
+                        </div>
+                    `)
+                    .join("")}
+            </div>`
+        : "<div class=\"menu-empty\">No sub-menu items added yet.</div>";
+
+    listEl.innerHTML = mainMenuHtml + submenuHtml;
+}
+
+function addSubMenu() {
+    const title = document.getElementById("subMenuTitle")?.value.trim();
+    const command = document.getElementById("subMenuCommand")?.value.trim();
+    const icon = document.getElementById("subMenuIcon")?.value.trim();
+    if (!title || !command) {
+        updateStatus("Sub-menu title and command are required.", true);
+        return;
+    }
+    currentMenu.subMenus.push({ title, command, icon });
+    renderMenuList();
+    updateStatus(`Added submenu: ${title}`);
+}
+
+async function updateExtensionStatus() {
+    if (!API || !API.extension) {
+        updateStatus("Trimble Connect workspace API is not connected.", true);
+        return;
+    }
+    const message = document.getElementById("statusText")?.value.trim();
+    if (!message) {
+        updateStatus("Enter a status message to update.", true);
+        return;
+    }
+
+    try {
+        await API.extension.setStatusMessage(message);
+        updateStatus("Extension status message updated.");
+    } catch (error) {
+        console.error(error);
+        updateStatus("Failed to update status message. Check console for errors.", true);
+    }
+}
+
 async function loadCwaFolders() {
     const cwaSelect = document.getElementById("cwaSelect");
     const strSelect = document.getElementById("strSelect");
     const strMessage = document.getElementById("strMessage");
     if (!cwaSelect || !strSelect || !strMessage) return;
 
-    cwaSelect.innerHTML = "<option>Listening for Completed folder items...</option>";
-    cwaSelect.disabled = true;
+    cwaSelect.innerHTML = "<option>Loading CWA folders...</option>";
     strSelect.innerHTML = "<option>Select a CWA folder first</option>";
+    strMessage.textContent = "";
     strSelect.disabled = true;
-    strMessage.textContent = "Select an IFC file in Trimble Connect Explorer to discover Completed folders.";
 
     if (!API) {
         cwaSelect.innerHTML = "<option>Not connected to Trimble Connect API</option>";
@@ -59,19 +137,47 @@ async function loadCwaFolders() {
         // First attempt: try to read Explorer -> Completed specifically
         const explorerFolders = await fetchExplorerCompleted();
         if (explorerFolders && explorerFolders.length) {
-            discoveredFolders = explorerFolders.map((folder) => ({
-                name: folder.name,
-                id: folder.id,
-                rawItem: folder
-            }));
-            refreshCwaOptions();
-            selectedCwaFolder = discoveredFolders[0];
-            cwaSelect.value = selectedCwaFolder.name;
-            await loadStrFiles(selectedCwaFolder);
+            cwaSelect.innerHTML = explorerFolders
+                .map((folder) => `<option value="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</option>`)
+                .join("");
+
+            cwaSelect.onchange = async () => {
+                const selected = explorerFolders.find((f) => f.name === cwaSelect.value);
+                await loadStrFiles(selected);
+            };
+
+            await loadStrFiles(explorerFolders[0]);
             return;
         }
 
-        cwaSelect.innerHTML = "<option>No Completed folders discovered yet.</option>";
+        // Fallback: generic completed/folders calls
+        let completedItems;
+        if (API.data) {
+            if (typeof API.data.getCompleted === "function") {
+                completedItems = await API.data.getCompleted();
+            } else if (typeof API.data.listCompleted === "function") {
+                completedItems = await API.data.listCompleted();
+            } else if (typeof API.data.getFolders === "function") {
+                completedItems = await API.data.getFolders();
+            }
+        }
+
+        const cwaFolders = normalizeFolderItems(completedItems);
+        if (!cwaFolders.length) {
+            cwaSelect.innerHTML = "<option>No CWA folders found</option>";
+            return;
+        }
+
+        cwaSelect.innerHTML = cwaFolders
+            .map((folder) => `<option value="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</option>`)
+            .join("");
+
+        cwaSelect.onchange = async () => {
+            const selected = cwaFolders.find((folder) => folder.name === cwaSelect.value);
+            await loadStrFiles(selected);
+        };
+
+        await loadStrFiles(cwaFolders[0]);
     } catch (error) {
         console.error(error);
         cwaSelect.innerHTML = "<option>Unable to load CWA folders</option>";
@@ -87,38 +193,12 @@ async function loadStrFiles(selectedFolder) {
         strSelect.innerHTML = "<option>Select a CWA folder first</option>";
         strSelect.disabled = true;
         strMessage.textContent = "";
-        await loadDataTableForFolder(null);
         return;
     }
 
     strSelect.innerHTML = "<option>Loading IFC files...</option>";
     strSelect.disabled = true;
     strMessage.textContent = "";
-    await loadDataTableForFolder(selectedFolder);
-
-    if (!API || !API.data) {
-        let ifcFiles = discoveredIfcFiles
-            .filter((file) => fileMatchesFolder(file, selectedFolder))
-            .map((file) => file.name)
-            .filter((name) => name.toLowerCase().endsWith(".ifc"));
-
-        if (!ifcFiles.length) {
-            ifcFiles = discoveredIfcFiles.map((file) => file.name).filter((name) => name.toLowerCase().endsWith(".ifc"));
-        }
-
-        if (!ifcFiles.length) {
-            strSelect.innerHTML = "<option>No IFC files discovered yet</option>";
-            strMessage.textContent = "Select IFC files in Trimble Connect Explorer to populate the list.";
-            return;
-        }
-
-        strSelect.disabled = false;
-        strSelect.innerHTML = ifcFiles
-            .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
-            .join("");
-        strMessage.textContent = `Showing ${ifcFiles.length} discovered IFC file(s).`;
-        return;
-    }
 
     try {
         let items = [];
@@ -178,8 +258,7 @@ function normalizeFolderItems(data) {
                 return {
                     name: item.name || item.title || item.folderName || item.displayName || item.label,
                     id: item.id,
-                    items: item.items || item.children || item.data || item.files,
-                    rawItem: item
+                    items: item.items || item.children || item.data || item.files
                 };
             }
             return null;
@@ -196,66 +275,6 @@ function renderCompletedList(items) {
         return "<div class=\"menu-empty\">No completed folders found.</div>";
     }
     return `<ul class="completed-list">${rows.join("")}</ul>`;
-}
-
-async function loadDataTableForFolder(selectedFolder) {
-    const debugEl = document.getElementById("apiDebug");
-    const dataTableMessage = document.getElementById("dataTableMessage");
-    if (dataTableMessage) {
-        dataTableMessage.textContent = "";
-    }
-
-    if (!API || !API.dataTable) {
-        if (dataTableMessage) {
-            dataTableMessage.textContent = "Trimble Connect DataTable API is not available.";
-        }
-        return;
-    }
-
-    if (!selectedFolder || !selectedFolder.name) {
-        if (dataTableMessage) {
-            dataTableMessage.textContent = "No selected folder name available for DataTable filtering.";
-        }
-        return;
-    }
-
-    if (typeof API.dataTable.setConfig !== "function") {
-        if (dataTableMessage) {
-            dataTableMessage.textContent = "DataTable setConfig is not supported by this API version.";
-        }
-        return;
-    }
-
-    try {
-        const currentConfig = typeof API.dataTable.getConfig === "function"
-            ? await API.dataTable.getConfig()
-            : {};
-
-        const newConfig = {
-            ...(currentConfig || {}),
-            filter: selectedFolder.name,
-            mode: currentConfig?.mode || "all"
-        };
-
-        await API.dataTable.setConfig(newConfig);
-
-        if (dataTableMessage) {
-            dataTableMessage.textContent = `DataTable filter applied: ${selectedFolder.name}`;
-        }
-
-        if (debugEl) {
-            let columns = [];
-            if (typeof API.dataTable.getAllColumns === "function") {
-                columns = await API.dataTable.getAllColumns();
-            }
-            debugEl.textContent += `\nDataTable filter '${selectedFolder.name}' applied. Columns: ${Array.isArray(columns) ? columns.map((col) => col.field || col.label).join(", ") : "n/a"}`;
-        }
-    } catch (error) {
-        console.error(error);
-        if (dataTableMessage) {
-            dataTableMessage.textContent = `DataTable update failed: ${error?.message || String(error)}`;
-        }
-    }
 }
 
 function escapeHtml(text) {
@@ -347,21 +366,17 @@ async function start() {
 async function connectToWorkspace() {
     const debugEl = document.getElementById("apiDebug");
     try {
-        API = await TrimbleConnectWorkspace.connect(window.parent, workspaceEventHandler);
+        API = await TrimbleConnectWorkspace.connect(window.parent);
         console.log("Connected to Trimble Connect workspace API", API);
         updateStatus("Connected to Trimble Connect workspace API.");
-            if (debugEl) {
+        if (debugEl) {
             try {
                 const keys = Object.keys(API || {}).sort();
-                const dataMethods = API?.data ? getApiMethods(API.data) : [];
                 debugEl.style.display = "block";
                 debugEl.textContent = `API keys: ${keys.join(', ')}`;
             } catch (e) {
                 debugEl.textContent = "Connected (unable to enumerate API).";
             }
-        }
-        if (isDataApiAvailable()) {
-            await probeDataApiMethods();
         }
         await setMenu();
         await loadCwaFolders();
@@ -379,69 +394,47 @@ async function fetchExplorerCompleted() {
     const debugEl = document.getElementById("apiDebug");
     if (!API || !API.data) return [];
 
-    const tried = new Set();
-    const functionNames = getDataApiFunctionNames();
-    const candidates = functionNames.filter((name) => /completed|explorer|folder|files?|list|get|fetch|project/i.test(name));
+    const candidates = [
+        { name: 'getExplorer', fn: () => API.data.getExplorer?.() },
+        { name: 'getCompleted', fn: () => API.data.getCompleted?.() },
+        { name: 'listCompleted', fn: () => API.data.listCompleted?.() },
+        { name: 'getFolders', fn: () => API.data.getFolders?.() },
+        { name: 'listFolders', fn: () => API.data.listFolders?.() },
+        { name: 'getProject', fn: () => API.data.getProject?.() },
+        { name: 'project.getProject', fn: () => API.project?.getProject?.() }
+    ];
 
-    const candidateCalls = [
-        ...candidates,
-        'getExplorer',
-        'listExplorer',
-        'fetchExplorer',
-        'getCompleted',
-        'listCompleted',
-        'getFolders',
-        'listFolders',
-        'getFolder',
-        'getFolderById',
-        'getFiles',
-        'listFiles',
-        'getProject'
-    ].filter((value, index, self) => self.indexOf(value) === index);
+    for (const c of candidates) {
+        if (typeof c.fn !== 'function') continue;
+        try {
+            const res = await c.fn();
+            if (!res) continue;
 
-    for (const fnName of candidateCalls) {
-        if (tried.has(fnName)) continue;
-        tried.add(fnName);
-        const fn = API.data?.[fnName];
-        if (typeof fn !== 'function') continue;
+            const folders = normalizeFolderItems(res);
+            // Try to find a top-level 'Completed' folder
+            const completed = folders.find(f => /completed/i.test(f.name));
+            if (completed && (Array.isArray(completed.items) && completed.items.length)) {
+                const children = normalizeFolderItems(completed.items);
+                if (debugEl) debugEl.textContent += `\nExplorer method ${c.name} -> found Completed with ${children.length} children.`;
+                return children;
+            }
 
-        const attempts = [];
-        if (fn.length === 0) {
-            attempts.push(() => fn());
-        }
-        if (fn.length === 1) {
-            attempts.push(() => fn('Completed'));
-        }
-        attempts.push(() => fn());
-
-        for (const attempt of attempts) {
-            try {
-                const res = await attempt();
-                if (!res) continue;
-
-                const folders = normalizeFolderItems(res);
-                const completed = folders.find((f) => /completed/i.test(f.name));
-                if (completed && Array.isArray(completed.items) && completed.items.length) {
-                    const children = normalizeFolderItems(completed.items);
-                    if (debugEl) debugEl.textContent += `\nExplorer method ${fnName} -> found Completed with ${children.length} children.`;
-                    return children;
-                }
-
-                const found = [];
-                (function walk(node) {
-                    if (!node) return;
-                    if (Array.isArray(node)) return node.forEach(walk);
-                    if (typeof node === 'object') {
-                        const n = node.name || node.title || node.label || node.displayName;
-                        if (n && /completed/i.test(n) && (node.items || node.children || node.data || node.files)) {
-                            found.push(node);
-                            return;
-                        }
-                        for (const key of ['items', 'children', 'folders', 'data', 'results', 'files']) {
-                            if (node[key]) walk(node[key]);
-                        }
+            // If no top-level Completed, search recursively for any Completed node
+            const found = [];
+            (function walk(node) {
+                if (!node) return;
+                if (Array.isArray(node)) return node.forEach(walk);
+                if (typeof node === 'object') {
+                    const n = node.name || node.title || node.label || node.displayName;
+                    if (n && /completed/i.test(n) && (node.items || node.children || node.data || node.files)) {
+                        found.push(node);
+                        return;
                     }
-                })(res);
+                    for (const key of ['items', 'children', 'folders', 'data', 'results', 'files']) {
+                        if (node[key]) walk(node[key]);
+                    }
+                }
+            })(res);
 
             if (found.length) {
                 const list = normalizeFolderItems(found[0].items || found[0].children || found[0].data || found[0].files);

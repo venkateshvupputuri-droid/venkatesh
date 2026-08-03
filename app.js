@@ -4,12 +4,12 @@ let api;
 // navigation. The submenu is the page that opens inside this extension.
 const menu = {
     title: "My Trimble Extension",
-    icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
+    icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
     command: "my_trimble_extension",
     subMenus: [
         {
             title: "Assignment",
-            icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.png",
+            icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
             command: "assignment"
         }
     ]

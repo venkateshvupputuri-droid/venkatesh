@@ -1,16 +1,21 @@
 let api;
 
-// The top-level item is only a navigation group. A command on it makes Trimble
-// try to resolve it as a separate extension route, which results in
-// "Extension not found". Commands belong to the selectable submenu items.
+// Commands must be unique to this extension. Trimble Connect sends the selected
+// command back to this iframe through the extension.command event.
+const COMMANDS = Object.freeze({
+    menu: "my_trimble_extension_menu",
+    assignment: "my_trimble_extension_assignment"
+});
+
 const menu = {
     title: "My Trimble Extension",
     icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
+    command: COMMANDS.menu,
     subMenus: [
         {
             title: "Assignment",
             icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
-            command: "assignment"
+            command: COMMANDS.assignment
         }
     ]
 };
@@ -22,8 +27,8 @@ function updateStatus(message, isError = false) {
     status.classList.toggle("status-success", !isError);
 }
 
-function showPage(command) {
-    document.getElementById("assignment").hidden = command !== "assignment";
+function showAssignmentPage() {
+    document.getElementById("assignment").hidden = false;
 }
 
 async function registerLeftNavigation() {
@@ -32,6 +37,7 @@ async function registerLeftNavigation() {
     }
 
     await api.ui.setMenu(menu);
+    await api.ui.setActiveMenuItem(COMMANDS.assignment);
 }
 
 async function connectToWorkspace() {
@@ -54,9 +60,9 @@ function onWorkspaceEvent(event, eventArgs) {
     if (event !== "extension.command") return;
 
     const command = eventArgs?.data;
-    if (command !== "assignment") return;
+    if (command !== COMMANDS.assignment && command !== COMMANDS.menu) return;
 
-    showPage(command);
+    showAssignmentPage();
     updateStatus("Assignment opened from the Trimble Connect navigation.");
 }
 
@@ -65,6 +71,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("refreshButton").addEventListener("click", () => {
         registerLeftNavigation().catch((error) => updateStatus(error.message, true));
     });
-    showPage("assignment");
+    showAssignmentPage();
     connectToWorkspace();
 });

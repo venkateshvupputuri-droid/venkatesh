@@ -17,8 +17,9 @@ body {
 }
 
 .tab-panel {
+    width: 100%;
     max-width: 1024px;
-    margin: 0 auto;
+    margin: 0;
     padding: 16px;
 }
 
@@ -147,13 +148,15 @@ button:hover {
 }
 
 .documents-layout {
-    display: grid;
-    grid-template-columns: 280px 1fr;
+    display: flex;
     gap: 18px;
-    align-items: start;
+    align-items: flex-start;
 }
 
 .left-panel {
+    width: 280px;
+    min-width: 240px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;

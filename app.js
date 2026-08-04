@@ -79,8 +79,8 @@ async function findProjectApiOrigin(projectId, token) {
     throw new Error("The current project could not be found in any Trimble Connect region.");
 }
 
-async function getFolderItems(origin, folderId, token) {
-    return requestJson(`${origin}/tc/api/2.0/folders/${encodeURIComponent(folderId)}/items`, token);
+async function getFolderItems(origin, projectId, folderId, token) {
+    return requestJson(`${origin}/tc/api/2.0/folders/${encodeURIComponent(folderId)}/items?projectId=${encodeURIComponent(projectId)}`, token);
 }
 
 async function loadCompletedData() {
@@ -97,19 +97,19 @@ async function loadCompletedData() {
     if (!token) throw new Error("Trimble Connect did not provide an access token.");
 
     const origin = await findProjectApiOrigin(project.id, token);
-    const rootItems = await getFolderItems(origin, project.id, token);
+    const rootItems = await getFolderItems(origin, project.id, project.id, token);
     const dataFolder = findByName(rootItems, "Data");
     if (!dataFolder) throw new Error("The Data folder was not found in this project.");
 
-    const dataItems = await getFolderItems(origin, dataFolder.id, token);
+    const dataItems = await getFolderItems(origin, project.id, dataFolder.id, token);
     const explorerFolder = findByName(dataItems, "Explorer");
     if (!explorerFolder) throw new Error("The Data/Explorer folder was not found in this project.");
 
-    const explorerItems = await getFolderItems(origin, explorerFolder.id, token);
+    const explorerItems = await getFolderItems(origin, project.id, explorerFolder.id, token);
     const completedFolder = findByName(explorerItems, "Completed");
     if (!completedFolder) throw new Error("The Data/Explorer/Completed folder was not found in this project.");
 
-    const completedItems = await getFolderItems(origin, completedFolder.id, token);
+    const completedItems = await getFolderItems(origin, project.id, completedFolder.id, token);
     setOptions("cwaSelect", completedItems.filter(isFolder), "Select a CWA folder");
     setOptions("strSelect", completedItems.filter((item) => !isFolder(item) && /\.ifc$/i.test(item.name || "")), "Select an IFC file");
     updateStatus("CWA folders and STR IFC files loaded from Data/Explorer/Completed.");

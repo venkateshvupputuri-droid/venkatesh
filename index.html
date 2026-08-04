@@ -8,29 +8,35 @@
     <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
 </head>
 <body>
-    <header class="header">
-        <h2>📁 My Trimble Extension</h2>
-    </header>
-
+    <header class="header"><h2>📁 My Trimble Extension</h2></header>
     <main class="tab-panel">
-        <section id="assignment" class="tab-content active">
+        <section class="tab-content active">
             <div class="documents-layout">
                 <aside class="left-panel">
                     <div class="left-panel-section-title">Data</div>
-                    <div class="left-panel-item">Explore project data using the dropdowns</div>
+                    <div class="left-panel-item">Choose data from Data / Explorer / Completed</div>
                 </aside>
                 <div class="content-panel">
                     <section class="example-card">
-                        <h3>Assignment</h3>
-                        <p>Your Assignment page is now opened from Trimble Connect's left navigation.</p>
+                        <h3>Project Data</h3>
+                        <p>Select the required CWA folder and STR IFC file.</p>
+                        <div class="form-row">
+                            <div class="field">
+                                <label for="cwaSelect">CWA</label>
+                                <select id="cwaSelect" disabled><option>Connect to load CWA folders…</option></select>
+                            </div>
+                            <div class="field">
+                                <label for="strSelect">STR</label>
+                                <select id="strSelect" disabled><option>Connect to load STR files…</option></select>
+                            </div>
+                        </div>
                     </section>
                 </div>
             </div>
         </section>
-
         <div class="status-row">
             <button id="connectButton" class="action" type="button">Connect</button>
-            <button id="refreshButton" class="action" type="button">Refresh navigation</button>
+            <button id="refreshButton" class="action" type="button">Refresh data</button>
         </div>
         <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API…</div>
     </main>

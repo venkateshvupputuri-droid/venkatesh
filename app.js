@@ -2,8 +2,7 @@ let api;
 
 const COMMANDS = Object.freeze({
     menu: "my_trimble_extension_menu",
-    cwa: "my_trimble_extension_cwa",
-    str: "my_trimble_extension_str"
+    assignment: "my_trimble_extension_assignment"
 });
 
 const menu = {
@@ -11,8 +10,7 @@ const menu = {
     icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
     command: COMMANDS.menu,
     subMenus: [
-        { title: "CWA", icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg", command: COMMANDS.cwa },
-        { title: "STR", icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg", command: COMMANDS.str }
+        { title: "Assignment", icon: "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg", command: COMMANDS.assignment }
     ]
 };
 
@@ -44,12 +42,45 @@ function findByName(items, name) {
     return items.find((item) => isFolder(item) && item.name?.toLowerCase() === name.toLowerCase());
 }
 
-async function getFolderItems(projectId, folderId, token) {
-    const response = await fetch(`https://app.connect.trimble.com/tc/api/2.0/folders/${encodeURIComponent(folderId)}/items?projectId=${encodeURIComponent(projectId)}`, {
+async function requestJson(url, token) {
+    const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
     });
     if (!response.ok) throw new Error(`Trimble Connect data request failed (${response.status}).`);
     return normalizeItems(await response.json());
+}
+
+function collectOrigins(value, origins = new Set()) {
+    if (Array.isArray(value)) value.forEach((item) => collectOrigins(item, origins));
+    else if (value && typeof value === "object") {
+        Object.entries(value).forEach(([key, item]) => {
+            if ((key === "origin" || key === "url") && typeof item === "string" && item.startsWith("https://")) origins.add(item.replace(/\/$/, ""));
+            else collectOrigins(item, origins);
+        });
+    }
+    return origins;
+}
+
+async function findProjectApiOrigin(projectId, token) {
+    const origins = new Set(["https://app.connect.trimble.com", "https://app21.connect.trimble.com", "https://app31.connect.trimble.com"]);
+    try {
+        const regions = await requestJson("https://app.connect.trimble.com/tc/api/2.0/regions", token);
+        collectOrigins(regions, origins);
+    } catch (error) {
+        console.warn("Trimble region discovery failed; using known Connect regions.", error);
+    }
+
+    for (const origin of origins) {
+        const response = await fetch(`${origin}/tc/api/2.0/projects/${encodeURIComponent(projectId)}`, {
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
+        });
+        if (response.ok) return origin;
+    }
+    throw new Error("The current project could not be found in any Trimble Connect region.");
+}
+
+async function getFolderItems(origin, folderId, token) {
+    return requestJson(`${origin}/tc/api/2.0/folders/${encodeURIComponent(folderId)}/items`, token);
 }
 
 async function loadCompletedData() {
@@ -65,19 +96,20 @@ async function loadCompletedData() {
     ]);
     if (!token) throw new Error("Trimble Connect did not provide an access token.");
 
-    const rootItems = await getFolderItems(project.id, project.id, token);
+    const origin = await findProjectApiOrigin(project.id, token);
+    const rootItems = await getFolderItems(origin, project.id, token);
     const dataFolder = findByName(rootItems, "Data");
     if (!dataFolder) throw new Error("The Data folder was not found in this project.");
 
-    const dataItems = await getFolderItems(project.id, dataFolder.id, token);
+    const dataItems = await getFolderItems(origin, dataFolder.id, token);
     const explorerFolder = findByName(dataItems, "Explorer");
     if (!explorerFolder) throw new Error("The Data/Explorer folder was not found in this project.");
 
-    const explorerItems = await getFolderItems(project.id, explorerFolder.id, token);
+    const explorerItems = await getFolderItems(origin, explorerFolder.id, token);
     const completedFolder = findByName(explorerItems, "Completed");
     if (!completedFolder) throw new Error("The Data/Explorer/Completed folder was not found in this project.");
 
-    const completedItems = await getFolderItems(project.id, completedFolder.id, token);
+    const completedItems = await getFolderItems(origin, completedFolder.id, token);
     setOptions("cwaSelect", completedItems.filter(isFolder), "Select a CWA folder");
     setOptions("strSelect", completedItems.filter((item) => !isFolder(item) && /\.ifc$/i.test(item.name || "")), "Select an IFC file");
     updateStatus("CWA folders and STR IFC files loaded from Data/Explorer/Completed.");
@@ -86,7 +118,7 @@ async function loadCompletedData() {
 async function registerLeftNavigation() {
     if (!api?.ui?.setMenu) throw new Error("This Trimble Connect host does not expose the UI navigation API.");
     await api.ui.setMenu(menu);
-    await api.ui.setActiveMenuItem(COMMANDS.cwa);
+    await api.ui.setActiveMenuItem(COMMANDS.assignment);
 }
 
 async function connectToWorkspace() {
@@ -103,7 +135,7 @@ async function connectToWorkspace() {
 
 function onWorkspaceEvent(event, eventArgs) {
     if (event !== "extension.command" || !Object.values(COMMANDS).includes(eventArgs?.data)) return;
-    updateStatus(`${eventArgs.data === COMMANDS.str ? "STR" : "CWA"} opened from the Trimble Connect navigation.`);
+    updateStatus("Assignment opened from the Trimble Connect navigation.");
 }
 
 document.addEventListener("DOMContentLoaded", () => {

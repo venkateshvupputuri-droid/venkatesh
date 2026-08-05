@@ -45,7 +45,7 @@ function findByName(items, name) {
 }
 
 // Improved requestJson: include response body in errors and handle non-JSON bodies
-async function requestJson(url, token) {
+async function requestJsonRaw(url, token) {
     const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
     });
@@ -56,7 +56,11 @@ async function requestJson(url, token) {
         const msg = typeof body === "object" ? JSON.stringify(body) : (body || response.statusText);
         throw new Error(`Trimble Connect data request failed (${response.status}): ${msg}`);
     }
-    return normalizeItems(body);
+    return body;
+}
+
+async function requestJson(url, token) {
+    return normalizeItems(await requestJsonRaw(url, token));
 }
 
 function collectOrigins(value, origins = new Set()) {
@@ -70,7 +74,11 @@ function collectOrigins(value, origins = new Set()) {
     return origins;
 }
 
-async function findProjectApiOrigin(projectId, token) {
+// Looks up the project's home region AND fetches its Core API record.
+// Root cause fix: the Workspace API's project.id is NOT the project's root
+// folder id. The Core API record has a separate `rootId` field that must be
+// used when listing the contents of the project's top-level folder.
+async function findProjectDetails(projectId, token) {
     const origins = new Set(["https://app.connect.trimble.com", "https://app21.connect.trimble.com", "https://app31.connect.trimble.com"]);
     try {
         const regions = await requestJson("https://app.connect.trimble.com/tc/api/2.0/regions", token);
@@ -82,10 +90,8 @@ async function findProjectApiOrigin(projectId, token) {
     for (const origin of origins) {
         try {
             const url = `${origin}/tc/api/2.0/projects/${encodeURIComponent(projectId)}`;
-            const response = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
-            });
-            if (response.ok) return origin;
+            const project = await requestJsonRaw(url, token);
+            if (project && (project.id || project.rootId)) return { origin, project };
         } catch (e) {
             console.warn(`project lookup failed for origin ${origin}`, e);
         }
@@ -153,11 +159,19 @@ async function loadCompletedData() {
     console.debug("access token present:", Boolean(token));
     if (!token) throw new Error("Trimble Connect did not provide an access token.");
 
-    const origin = await findProjectApiOrigin(project.id, token);
+    const { origin, project: projectRecord } = await findProjectDetails(project.id, token);
     console.debug("chosen origin:", origin);
+    console.debug("project record:", projectRecord);
 
-    // In the Connect Core API the project id is also the root folder id.
-    const rootItems = await getFolderItems(origin, project.id, token);
+    // The project's root folder id is a distinct value from the project id
+    // itself (exposed as `rootId` on the Core API project record). Using
+    // project.id here was the bug: it silently pointed at a non-existent
+    // folder, which looked like a permissions/data problem but was really a
+    // wrong-id problem that affected every user, including admins.
+    const rootFolderId = projectRecord.rootId || projectRecord.rootFolderId;
+    if (!rootFolderId) throw new Error("The project's root folder id (rootId) was not returned by Trimble Connect.");
+
+    const rootItems = await getFolderItems(origin, rootFolderId, token);
     console.debug("rootItems:", rootItems);
     const dataFolder = findByName(rootItems, "Data");
     if (!dataFolder) throw new Error("The Data folder was not found in this project.");

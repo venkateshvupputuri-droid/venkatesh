@@ -92,10 +92,11 @@ async function findProjectApiOrigin(projectId, token) {
     throw new Error("The current project could not be found in any Trimble Connect region.");
 }
 
-async function getFolderItems(origin, projectId, folderId, token) {
-    const url = `${origin}/tc/api/2.0/folders/${encodeURIComponent(folderId)}/items?projectId=${encodeURIComponent(projectId)}`;
-    // debug log the exact URL being fetched
-    console.debug("GET folder items:", url);
+async function getFolderItems(origin, folderId, token) {
+    // A folder belongs to exactly one project. Supplying projectId as an extra
+    // query parameter can make Connect authorize a different project context
+    // and return USER_NOT_IN_PROJECT, even for the project currently open.
+    const url = `${origin}/tc/api/2.0/folders/${encodeURIComponent(folderId)}/items`;
     return requestJson(url, token);
 }
 
@@ -106,10 +107,10 @@ async function loadCompletedData() {
     cwa.replaceChildren(new Option("Loading CWA folders…", ""));
     str.replaceChildren(new Option("Loading STR files…", ""));
 
-    // Request project and token in parallel
+    // getProject is scoped by Trimble Connect to the project hosting this extension.
     const [project, tokenRaw] = await Promise.all([
         api.project.getProject(),
-        api.extension.getPermission("accesstoken")
+        api.extension.requestPermission("accesstoken")
     ]);
 
     console.debug("project:", project);
@@ -123,26 +124,23 @@ async function loadCompletedData() {
     const origin = await findProjectApiOrigin(project.id, token);
     console.debug("chosen origin:", origin);
 
-    // Some Trimble project objects expose the root folder id separately; prefer that if available
-    const rootFolderId = project.rootFolderId || project.rootFolder || project.id;
-    console.debug("rootFolderId used for folder listing:", rootFolderId);
-
-    const rootItems = await getFolderItems(origin, project.id, rootFolderId, token);
+    // In the Connect Core API the project id is also the root folder id.
+    const rootItems = await getFolderItems(origin, project.id, token);
     console.debug("rootItems:", rootItems);
     const dataFolder = findByName(rootItems, "Data");
     if (!dataFolder) throw new Error("The Data folder was not found in this project.");
 
-    const dataItems = await getFolderItems(origin, project.id, dataFolder.id, token);
+    const dataItems = await getFolderItems(origin, dataFolder.id, token);
     console.debug("dataItems:", dataItems);
     const explorerFolder = findByName(dataItems, "Explorer");
     if (!explorerFolder) throw new Error("The Data/Explorer folder was not found in this project.");
 
-    const explorerItems = await getFolderItems(origin, project.id, explorerFolder.id, token);
+    const explorerItems = await getFolderItems(origin, explorerFolder.id, token);
     console.debug("explorerItems:", explorerItems);
     const completedFolder = findByName(explorerItems, "Completed");
     if (!completedFolder) throw new Error("The Data/Explorer/Completed folder was not found in this project.");
 
-    const completedItems = await getFolderItems(origin, project.id, completedFolder.id, token);
+    const completedItems = await getFolderItems(origin, completedFolder.id, token);
     console.debug("completedItems:", completedItems);
 
     setOptions("cwaSelect", completedItems.filter(isFolder), "Select a CWA folder");

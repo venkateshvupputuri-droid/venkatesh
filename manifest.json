@@ -5,4 +5,10 @@
   "description": "Trimble Connect project extension page for custom UI and menu actions",
   "configCommand": "my_trimble_extension_config",
   "enabled": true
+  "permissions":[
+      "accesstoken",
+      "projects",
+      "viewer",
+  ],
+  "enabled": true
 }

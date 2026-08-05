@@ -92,7 +92,7 @@ async function loadCompletedData() {
 
     const [project, token] = await Promise.all([
         api.project.getProject(),
-        api.extension.requestPermission("accesstoken")
+        await api.extension.getPermission("accesstoken")
     ]);
     if (!token) throw new Error("Trimble Connect did not provide an access token.");
 

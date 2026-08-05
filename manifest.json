@@ -4,10 +4,5 @@
   "url": "https://venkateshvupputuri-droid.github.io/venkatesh/",
   "description": "Trimble Connect project extension page for custom UI and menu actions",
   "configCommand": "my_trimble_extension_config",
-    "permissions":[
-      "accesstoken",
-      "projects",
-      "viwer",
-  ],
   "enabled": true
 }

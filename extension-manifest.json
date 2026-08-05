@@ -7,7 +7,7 @@
   "permissions":[
       "accesstoken",
       "projects",
-      "viwer",
+      "viewer",
   ],
   "enabled": true
 }

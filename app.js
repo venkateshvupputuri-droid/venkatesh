@@ -1,4 +1,5 @@
 let api;
+let resolveAccessToken;
 
 const COMMANDS = Object.freeze({
     menu: "my_trimble_extension_menu",
@@ -93,11 +94,46 @@ async function findProjectApiOrigin(projectId, token) {
 }
 
 async function getFolderItems(origin, folderId, token) {
-    // A folder belongs to exactly one project. Supplying projectId as an extra
-    // query parameter can make Connect authorize a different project context
-    // and return USER_NOT_IN_PROJECT, even for the project currently open.
     const url = `${origin}/tc/api/2.0/folders/${encodeURIComponent(folderId)}/items`;
     return requestJson(url, token);
+}
+
+function extractAccessToken(value) {
+    if (typeof value === "string") return value.trim();
+    if (value && typeof value === "object") return value.accessToken || value.access_token || value.token || value.value || "";
+    return "";
+}
+
+function looksLikeAccessToken(value) {
+    // requestPermission may return a status string (for example "success")
+    // while the actual access token arrives through extension.accessToken.
+    return typeof value === "string" && value.length > 32 && !/^(success|granted|true|ok)$/i.test(value);
+}
+
+async function getWorkspaceAccessToken() {
+    return new Promise(async (resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+            resolveAccessToken = undefined;
+            reject(new Error("Trimble Connect did not send an access token."));
+        }, 10000);
+
+        resolveAccessToken = (token) => {
+            window.clearTimeout(timeout);
+            resolveAccessToken = undefined;
+            resolve(token);
+        };
+
+        try {
+            const permissionResult = await api.extension.requestPermission("accesstoken");
+            const returnedToken = extractAccessToken(permissionResult);
+            // Older hosts return the token directly; newer hosts emit it as an event.
+            if (looksLikeAccessToken(returnedToken) && resolveAccessToken) resolveAccessToken(returnedToken);
+        } catch (error) {
+            window.clearTimeout(timeout);
+            resolveAccessToken = undefined;
+            reject(error);
+        }
+    });
 }
 
 async function loadCompletedData() {
@@ -108,16 +144,12 @@ async function loadCompletedData() {
     str.replaceChildren(new Option("Loading STR files…", ""));
 
     // getProject is scoped by Trimble Connect to the project hosting this extension.
-    const [project, tokenRaw] = await Promise.all([
+    const [project, token] = await Promise.all([
         api.project.getProject(),
-        api.extension.requestPermission("accesstoken")
+        getWorkspaceAccessToken()
     ]);
 
     console.debug("project:", project);
-    console.debug("tokenRaw:", tokenRaw);
-
-    // tokenRaw may be a string or an object containing the token.
-    const token = (typeof tokenRaw === "string") ? tokenRaw : (tokenRaw && (tokenRaw.accessToken || tokenRaw.access_token || tokenRaw.token || tokenRaw.value));
     console.debug("access token present:", Boolean(token));
     if (!token) throw new Error("Trimble Connect did not provide an access token.");
 
@@ -167,6 +199,11 @@ async function connectToWorkspace() {
 }
 
 function onWorkspaceEvent(event, eventArgs) {
+    if (event === "extension.accessToken") {
+        const token = extractAccessToken(eventArgs?.data);
+        if (looksLikeAccessToken(token) && resolveAccessToken) resolveAccessToken(token);
+        return;
+    }
     if (event !== "extension.command" || !Object.values(COMMANDS).includes(eventArgs?.data)) return;
     updateStatus("Assignment opened from the Trimble Connect navigation.");
 }

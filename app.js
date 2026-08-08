@@ -246,7 +246,12 @@ async function loadModelDetails(itemId) {
     // 2. item.properties or item.data fields
     // 3. latest version metadata
     // 4. attempt to fetch the start of the IFC file and parse FILE_DESCRIPTION/FILE_NAME
-    let description = item?.description || item?.summary || (item?.properties && (item.properties.description || item.properties.Description));
+    // Prefer explicit product name fields when available (matches the Properties panel)
+    let description = item?.description || item?.summary ||
+        (item?.properties && (item.properties.description || item.properties.Description)) ||
+        (item?.properties && (item.properties["Product Name"] || item.properties.productName || item.properties.product || item.properties.Product)) ||
+        (item?.metadata && (item.metadata.productName || item.metadata.product)) ||
+        (item?.data && (item.data.productName || (item.data.product && (item.data.product.name || item.data.product.productName))));
     if (!description && item?.data && typeof item.data === "object") {
         description = item.data.description || item.data.summary || null;
     }
@@ -262,7 +267,7 @@ async function loadModelDetails(itemId) {
                 if (vId) {
                     const vUrl = `${currentOrigin}/tc/api/2.0/versions/${encodeURIComponent(vId)}`;
                     const v = await requestJsonRaw(vUrl, currentToken);
-                    return v?.description || v?.summary || (v?.metadata && (v.metadata.description || v.metadata.summary)) || null;
+                    return v?.description || v?.summary || (v?.metadata && (v.metadata.description || v.metadata.summary || v.metadata.productName)) || v?.product?.name || null;
                 }
             }
         } catch (e) {

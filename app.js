@@ -173,25 +173,15 @@ async function loadCompletedData() {
 
     const rootItems = await getFolderItems(origin, rootFolderId, token);
     console.debug("rootItems:", rootItems);
-    const dataFolder = findByName(rootItems, "Data");
-    if (!dataFolder) throw new Error("The Data folder was not found in this project.");
-
-    const dataItems = await getFolderItems(origin, dataFolder.id, token);
-    console.debug("dataItems:", dataItems);
-    const explorerFolder = findByName(dataItems, "Explorer");
-    if (!explorerFolder) throw new Error("The Data/Explorer folder was not found in this project.");
-
-    const explorerItems = await getFolderItems(origin, explorerFolder.id, token);
-    console.debug("explorerItems:", explorerItems);
-    const completedFolder = findByName(explorerItems, "Completed");
-    if (!completedFolder) throw new Error("The Data/Explorer/Completed folder was not found in this project.");
+    const completedFolder = findByName(rootItems, "Completed");
+    if (!completedFolder) throw new Error("The Completed folder was not found in this project.");
 
     const completedItems = await getFolderItems(origin, completedFolder.id, token);
     console.debug("completedItems:", completedItems);
 
     setOptions("cwaSelect", completedItems.filter(isFolder), "Select a CWA folder");
     setOptions("strSelect", completedItems.filter((item) => !isFolder(item) && /\.ifc$/i.test(item.name || "")), "Select an IFC file");
-    updateStatus("CWA folders and STR IFC files loaded from Data/Explorer/Completed.");
+    updateStatus("CWA folders and STR IFC files loaded from Completed.");
 }
 
 async function registerLeftNavigation() {

@@ -241,7 +241,90 @@ async function loadModelDetails(itemId) {
     const name = item?.name || item?.fileName || item?.id || "(unnamed)";
     nameEl.value = name;
 
-    const description = item?.description || item?.summary || (item?.properties && (item.properties.description || item.properties.Description)) || (item?.data && item.data.description) || JSON.stringify(item, null, 2);
+    // Try multiple locations for a meaningful description:
+    // 1. top-level item.description / summary
+    // 2. item.properties or item.data fields
+    // 3. latest version metadata
+    // 4. attempt to fetch the start of the IFC file and parse FILE_DESCRIPTION/FILE_NAME
+    let description = item?.description || item?.summary || (item?.properties && (item.properties.description || item.properties.Description));
+    if (!description && item?.data && typeof item.data === "object") {
+        description = item.data.description || item.data.summary || null;
+    }
+
+    async function tryGetVersionDescription() {
+        try {
+            const versionsUrl = `${currentOrigin}/tc/api/2.0/items/${encodeURIComponent(itemId)}/versions`;
+            const versions = await requestJsonRaw(versionsUrl, currentToken);
+            if (Array.isArray(versions) && versions.length) {
+                // Assume the first is latest (or pick the max by version number)
+                const latest = versions[0];
+                const vId = latest?.id || latest?.versionId;
+                if (vId) {
+                    const vUrl = `${currentOrigin}/tc/api/2.0/versions/${encodeURIComponent(vId)}`;
+                    const v = await requestJsonRaw(vUrl, currentToken);
+                    return v?.description || v?.summary || (v?.metadata && (v.metadata.description || v.metadata.summary)) || null;
+                }
+            }
+        } catch (e) {
+            console.debug("version metadata lookup failed:", e);
+        }
+        return null;
+    }
+
+    async function tryFetchIfcHeader(downloadUrl) {
+        try {
+            // Fetch first chunk of file to parse header (range to limit bandwidth)
+            const resp = await fetch(downloadUrl, {
+                method: "GET",
+                headers: { Authorization: `Bearer ${currentToken}`, Range: "bytes=0-65535" }
+            });
+            if (!resp.ok) return null;
+            const text = await resp.text();
+            // Simple heuristic: look for FILE_DESCRIPTION or a descriptive block
+            const m = text.match(/FILE_DESCRIPTION\s*\(\s*\(([^)]+)\)/i);
+            if (m && m[1]) return m[1].replace(/\'|\"/g, "").trim();
+            // Fallback: look for a line with description-like words
+            const lines = text.split(/\r?\n/).slice(0, 200).map(s => s.trim());
+            for (const line of lines) {
+                if (/DESCRIPTION[:=]/i.test(line) || /PIPE AND CABLE|PIPE AND|CABLE GALL/i.test(line)) return line;
+            }
+        } catch (e) {
+            console.debug("IFC header fetch failed:", e);
+        }
+        return null;
+    }
+
+    if (!description) {
+        description = await tryGetVersionDescription();
+    }
+
+    // If still not found, try to locate a download URL from item or version and read IFC header
+    if (!description) {
+        let downloadUrl = item?.downloadUrl || item?.fileUrl || item?.preview || null;
+        // Try to find storage locations or version storage
+        if (!downloadUrl && item?.storageLocations && Array.isArray(item.storageLocations) && item.storageLocations.length) {
+            downloadUrl = item.storageLocations[0].url;
+        }
+        if (!downloadUrl) {
+            try {
+                const versionsUrl = `${currentOrigin}/tc/api/2.0/items/${encodeURIComponent(itemId)}/versions`;
+                const versions = await requestJsonRaw(versionsUrl, currentToken);
+                const latest = Array.isArray(versions) && versions[0];
+                if (latest) {
+                    downloadUrl = latest.downloadUrl || latest.storageLocations && latest.storageLocations[0] && latest.storageLocations[0].url;
+                }
+            } catch (e) {
+                console.debug("could not determine version download url:", e);
+            }
+        }
+
+        if (downloadUrl) {
+            const hdr = await tryFetchIfcHeader(downloadUrl);
+            if (hdr) description = hdr;
+        }
+    }
+
+    if (!description) description = "(no description available)";
     descEl.value = typeof description === "string" ? description : JSON.stringify(description, null, 2);
 }
 

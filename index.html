@@ -14,7 +14,10 @@
             <div class="documents-layout">
                 <aside class="left-panel">
                     <div class="left-panel-section-title">Data</div>
-                    <div class="left-panel-item">Choose data from Data / Explorer / Completed</div>
+                    <div class="left-panel-item">
+                        <div id="leftPanelMessage">Choose data from Data / Explorer / Completed</div>
+                        <ul id="folderFileList" class="file-list"></ul>
+                    </div>
                 </aside>
                 <div class="content-panel">
                     <section class="example-card">
@@ -26,8 +29,23 @@
                                 <select id="cwaSelect" disabled><option>Connect to load CWA folders…</option></select>
                             </div>
                             <div class="field">
-                                <label for="strSelect">STR</label>
-                                <select id="strSelect" disabled><option>Connect to load STR files…</option></select>
+                                <label for="strSelect">Model No</label>
+                                <select id="strSelect" disabled><option>Connect to load model files…</option></select>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="example-card" id="modelInfoCard">
+                        <h3>Model Info</h3>
+                        <div class="form-row">
+                            <div class="field">
+                                <label for="modelName">Model Name</label>
+                                <input id="modelName" type="text" readonly />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="field">
+                                <label for="modelDescription">Description</label>
+                                <textarea id="modelDescription" rows="4" readonly></textarea>
                             </div>
                         </div>
                     </section>

@@ -1,5 +1,7 @@
 let api;
 let resolveAccessToken;
+let currentOrigin;
+let currentToken;
 
 const COMMANDS = Object.freeze({
     menu: "my_trimble_extension_menu",
@@ -179,9 +181,68 @@ async function loadCompletedData() {
     const completedItems = await getFolderItems(origin, completedFolder.id, token);
     console.debug("completedItems:", completedItems);
 
+    // Keep origin/token for subsequent folder/item queries
+    currentOrigin = origin;
+    currentToken = token;
+
+    // Populate CWA selector with subfolders found under Completed. STR files will be loaded
+    // when the user selects a CWA folder (so they come from the same folder the user chose).
     setOptions("cwaSelect", completedItems.filter(isFolder), "Select a CWA folder");
-    setOptions("strSelect", completedItems.filter((item) => !isFolder(item) && /\.ifc$/i.test(item.name || "")), "Select an IFC file");
-    updateStatus("CWA folders and STR IFC files loaded from Completed.");
+    // Reset STR selector until a CWA folder is chosen
+    const strSelect = document.getElementById("strSelect");
+    strSelect.replaceChildren(new Option("Select a CWA folder to show models…", ""));
+    strSelect.disabled = true;
+
+    // Wire change handlers
+    cwa.addEventListener("change", (ev) => {
+        const folderId = ev.target.value;
+        if (!folderId) return;
+        loadCwaFolderItems(folderId).catch((error) => updateStatus(error.message || String(error), true));
+    });
+
+    str.addEventListener("change", (ev) => {
+        const itemId = ev.target.value;
+        if (!itemId) return;
+        loadModelDetails(itemId).catch((error) => updateStatus(error.message || String(error), true));
+    });
+
+    updateStatus("CWA folders loaded from Completed. Select a CWA folder to view models.");
+}
+
+async function loadCwaFolderItems(folderId) {
+    if (!currentOrigin || !currentToken) throw new Error("Missing origin or access token.");
+    const items = await getFolderItems(currentOrigin, folderId, currentToken);
+    console.debug("CWA folder items:", items);
+
+    // List files in the left panel for visibility
+    const listEl = document.getElementById("folderFileList");
+    listEl.replaceChildren();
+    (items || []).forEach((it) => {
+        const li = document.createElement("li");
+        li.textContent = it.name || it.id || "(unnamed)";
+        listEl.appendChild(li);
+    });
+
+    // Populate STR/model select with IFC files in this selected folder
+    const models = (items || []).filter((item) => !isFolder(item) && /\.ifc$/i.test(item.name || ""));
+    setOptions("strSelect", models, "Select an IFC file");
+    document.getElementById("strSelect").disabled = false;
+    document.getElementById("leftPanelMessage").textContent = "Files in selected CWA folder:";
+}
+
+async function loadModelDetails(itemId) {
+    if (!currentOrigin || !currentToken) throw new Error("Missing origin or access token.");
+    const url = `${currentOrigin}/tc/api/2.0/items/${encodeURIComponent(itemId)}`;
+    const item = await requestJsonRaw(url, currentToken);
+    console.debug("model item details:", item);
+
+    const nameEl = document.getElementById("modelName");
+    const descEl = document.getElementById("modelDescription");
+    const name = item?.name || item?.fileName || item?.id || "(unnamed)";
+    nameEl.value = name;
+
+    const description = item?.description || item?.summary || (item?.properties && (item.properties.description || item.properties.Description)) || (item?.data && item.data.description) || JSON.stringify(item, null, 2);
+    descEl.value = typeof description === "string" ? description : JSON.stringify(description, null, 2);
 }
 
 async function registerLeftNavigation() {

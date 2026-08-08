@@ -28,3 +28,5 @@ npm run start
 
 `http://localhost:8080` is useful for development only; a live project must be
 able to load the extension URL over HTTPS.
+
+Edited

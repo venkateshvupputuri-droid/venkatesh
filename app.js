@@ -4,6 +4,7 @@ let currentOrigin;
 let currentToken;
 let cwaRequestId = 0;
 let modelRequestId = 0;
+let modelItemsById = new Map();
 
 const COMMANDS = Object.freeze({
     menu: "my_trimble_extension_menu",
@@ -229,6 +230,7 @@ async function loadCompletedData() {
     str.disabled = true;
     cwaRequestId += 1;
     modelRequestId += 1;
+    modelItemsById = new Map();
 
     cwa.replaceChildren(new Option("Loading CWA folders…", ""));
     str.replaceChildren(new Option("Loading model files…", ""));
@@ -315,7 +317,11 @@ async function loadCompletedData() {
             return;
         }
 
-        loadModelDetails(itemId, requestId).catch((error) =>
+        loadModelDetails(
+            itemId,
+            requestId,
+            modelItemsById.get(itemId)
+        ).catch((error) =>
             updateStatus(error.message || String(error), true)
         );
     };
@@ -346,6 +352,12 @@ async function loadCwaFolderItems(folderId, requestId) {
             /\.ifc$/i.test(item.name || "")
     );
 
+    modelItemsById = new Map(
+        models
+            .filter((item) => item.id)
+            .map((item) => [item.id, item])
+    );
+
     setOptions(
         "strSelect",
         models,
@@ -372,6 +384,9 @@ function extractStrName(item) {
         item?.product?.name,
         item?.product?.productName,
         item?.productName,
+
+        item?.latestVersion?.product?.name,
+        item?.latestVersion?.productName,
 
         item?.properties?.["Product Name"],
         item?.properties?.["product name"],
@@ -419,9 +434,21 @@ function extractProductDescription(item) {
     return "";
 }
 
-async function loadModelDetails(itemId, requestId) {
+async function loadModelDetails(itemId, requestId, selectedItem) {
     if (!currentOrigin || !currentToken) {
         throw new Error("Missing origin or access token.");
+    }
+
+    const strNameEl = document.getElementById("modelDescription");
+    let strName = extractStrName(selectedItem);
+
+    // The item selected in Model No is the authoritative file record. Its
+    // product.name is displayed immediately when it is included in the folder
+    // listing, avoiding a second request before updating Str-name.
+    if (strName) {
+        strNameEl.value = strName;
+        updateStatus("Product Name loaded for the selected model.");
+        return;
     }
 
     const url =
@@ -433,8 +460,6 @@ async function loadModelDetails(itemId, requestId) {
 
     console.debug("selected model item details:", item);
 
-    const strNameEl = document.getElementById("modelDescription");
-
     /*
      * IMPORTANT:
      * The UI label is "Str-name".
@@ -442,7 +467,7 @@ async function loadModelDetails(itemId, requestId) {
      * which is the value represented by the Product > Product Name
      * property in Trimble Connect.
      */
-    let strName = extractStrName(item);
+    strName = extractStrName(item);
 
     /*
      * Some Connect responses expose Product Name through a nested

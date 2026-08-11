@@ -2,6 +2,8 @@ let api;
 let resolveAccessToken;
 let currentOrigin;
 let currentToken;
+let cwaRequestId = 0;
+let modelRequestId = 0;
 
 const COMMANDS = Object.freeze({
     menu: "my_trimble_extension_menu",
@@ -225,6 +227,8 @@ async function loadCompletedData() {
 
     cwa.disabled = true;
     str.disabled = true;
+    cwaRequestId += 1;
+    modelRequestId += 1;
 
     cwa.replaceChildren(new Option("Loading CWA folders…", ""));
     str.replaceChildren(new Option("Loading model files…", ""));
@@ -285,6 +289,8 @@ async function loadCompletedData() {
 
     cwa.onchange = (ev) => {
         const folderId = ev.target.value;
+        const requestId = ++cwaRequestId;
+        modelRequestId += 1;
 
         if (!folderId) {
             str.replaceChildren(
@@ -295,20 +301,21 @@ async function loadCompletedData() {
             return;
         }
 
-        loadCwaFolderItems(folderId).catch((error) =>
+        loadCwaFolderItems(folderId, requestId).catch((error) =>
             updateStatus(error.message || String(error), true)
         );
     };
 
     str.onchange = (ev) => {
         const itemId = ev.target.value;
+        const requestId = ++modelRequestId;
 
         if (!itemId) {
             strName.value = "";
             return;
         }
 
-        loadModelDetails(itemId).catch((error) =>
+        loadModelDetails(itemId, requestId).catch((error) =>
             updateStatus(error.message || String(error), true)
         );
     };
@@ -318,7 +325,7 @@ async function loadCompletedData() {
     );
 }
 
-async function loadCwaFolderItems(folderId) {
+async function loadCwaFolderItems(folderId, requestId) {
     if (!currentOrigin || !currentToken) {
         throw new Error("Missing origin or access token.");
     }
@@ -328,6 +335,8 @@ async function loadCwaFolderItems(folderId) {
         folderId,
         currentToken
     );
+
+    if (requestId !== cwaRequestId) return;
 
     // The IFC files are used only to populate Model No.
     // They are intentionally not displayed in a separate DATA/file-list panel.
@@ -410,7 +419,7 @@ function extractProductDescription(item) {
     return "";
 }
 
-async function loadModelDetails(itemId) {
+async function loadModelDetails(itemId, requestId) {
     if (!currentOrigin || !currentToken) {
         throw new Error("Missing origin or access token.");
     }
@@ -419,6 +428,8 @@ async function loadModelDetails(itemId) {
         `${currentOrigin}/tc/api/2.0/items/${encodeURIComponent(itemId)}`;
 
     const item = await requestJsonRaw(url, currentToken);
+
+    if (requestId !== modelRequestId) return;
 
     console.debug("selected model item details:", item);
 
@@ -474,6 +485,8 @@ async function loadModelDetails(itemId) {
             );
         }
     }
+
+    if (requestId !== modelRequestId) return;
 
     /*
      * Product Description is deliberately NOT shown.

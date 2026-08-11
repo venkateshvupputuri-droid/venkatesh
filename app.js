@@ -435,94 +435,49 @@ function extractProductDescription(item) {
 }
 
 async function loadModelDetails(itemId, requestId, selectedItem) {
-    if (!currentOrigin || !currentToken) {
-        throw new Error("Missing origin or access token.");
-    }
-
     const strNameEl = document.getElementById("modelDescription");
-    let strName = extractStrName(selectedItem);
-
-    // The item selected in Model No is the authoritative file record. Its
-    // product.name is displayed immediately when it is included in the folder
-    // listing, avoiding a second request before updating Str-name.
-    if (strName) {
-        strNameEl.value = strName;
-        updateStatus("Product Name loaded for the selected model.");
-        return;
+    if (!api?.viewer?.getModels || !api?.viewer?.getObjects) {
+        throw new Error("The Trimble Connect Viewer API is not available.");
     }
 
-    const url =
-        `${currentOrigin}/tc/api/2.0/items/${encodeURIComponent(itemId)}`;
+    const selectedName = String(selectedItem?.name || "").trim();
+    const normalizeModelName = (name) =>
+        String(name || "")
+            .trim()
+            .replace(/\.ifc$/i, "")
+            .toLowerCase();
 
-    const item = await requestJsonRaw(url, currentToken);
+    const viewerModels = await api.viewer.getModels();
+    const viewerModel = viewerModels.find((model) =>
+        model.versionId === selectedItem?.versionId ||
+        model.id === selectedItem?.versionId ||
+        normalizeModelName(model.name) === normalizeModelName(selectedName)
+    );
+
+    if (!viewerModel) {
+        throw new Error(
+            `Open ${selectedName || "the selected IFC"} in the 3D Viewer, then select it again.`
+        );
+    }
+
+    const modelObjects = await api.viewer.getObjects({
+        modelObjectIds: [{ modelId: viewerModel.id }]
+    });
 
     if (requestId !== modelRequestId) return;
 
-    console.debug("selected model item details:", item);
+    const productName = modelObjects
+        .flatMap((model) => model.objects || [])
+        .map((object) => object?.product?.name)
+        .find((name) => typeof name === "string" && name.trim());
 
-    /*
-     * IMPORTANT:
-     * The UI label is "Str-name".
-     * Its value comes from Product Name, i.e. item.product.name,
-     * which is the value represented by the Product > Product Name
-     * property in Trimble Connect.
-     */
-    strName = extractStrName(item);
-
-    /*
-     * Some Connect responses expose Product Name through a nested
-     * version/product metadata object. Check the latest version when
-     * the item response itself does not contain it.
-     */
-    if (!strName) {
-        try {
-            const versionsUrl =
-                `${currentOrigin}/tc/api/2.0/items/${encodeURIComponent(itemId)}/versions`;
-
-            const versions = await requestJsonRaw(
-                versionsUrl,
-                currentToken
-            );
-
-            if (Array.isArray(versions) && versions.length) {
-                const latest = versions[0];
-                strName = extractStrName(latest);
-
-                const versionId =
-                    latest?.id || latest?.versionId;
-
-                if (!strName && versionId) {
-                    const versionUrl =
-                        `${currentOrigin}/tc/api/2.0/versions/${encodeURIComponent(versionId)}`;
-
-                    const version = await requestJsonRaw(
-                        versionUrl,
-                        currentToken
-                    );
-
-                    strName = extractStrName(version);
-                }
-            }
-        } catch (error) {
-            console.debug(
-                "Product Name version lookup failed:",
-                error
-            );
-        }
-    }
-
-    if (requestId !== modelRequestId) return;
-
-    /*
-     * Product Description is deliberately NOT shown.
-     * The requested Str-name field is the Product Name.
-     */
-    const productDescription = extractProductDescription(item);
-    console.debug("Product Name:", strName);
-    console.debug("Product Description (not displayed):", productDescription);
-
-    strNameEl.value =
-        strName || "(Product Name not available)";
+    strNameEl.value = productName?.trim() || "(Product Name not available)";
+    updateStatus(
+        productName
+            ? "Product Name loaded from the selected viewer model."
+            : "No Product Name was found in the selected viewer model.",
+        !productName
+    );
 }
 
 async function registerLeftNavigation() {

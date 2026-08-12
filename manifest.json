@@ -6,8 +6,7 @@
   "configCommand": "my_trimble_extension_config",
   "permissions": [
     "accesstoken",
-    "projects",
-    "viewer"
+    "projects"
   ],
   "enabled": true
 }

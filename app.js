@@ -1,4 +1,4 @@
-let api;
+﻿let api;
 let resolveAccessToken;
 let currentOrigin;
 let currentToken;
@@ -232,8 +232,8 @@ async function loadCompletedData() {
     modelRequestId += 1;
     modelItemsById = new Map();
 
-    cwa.replaceChildren(new Option("Loading CWA folders…", ""));
-    str.replaceChildren(new Option("Loading model files…", ""));
+    cwa.replaceChildren(new Option("Loading CWA foldersâ€¦", ""));
+    str.replaceChildren(new Option("Loading model filesâ€¦", ""));
     strName.value = "";
 
     const [project, token] = await Promise.all([
@@ -285,7 +285,7 @@ async function loadCompletedData() {
     );
 
     str.replaceChildren(
-        new Option("Select a CWA folder to show models…", "")
+        new Option("Select a CWA folder to show modelsâ€¦", "")
     );
     str.disabled = true;
 
@@ -296,7 +296,7 @@ async function loadCompletedData() {
 
         if (!folderId) {
             str.replaceChildren(
-                new Option("Select a CWA folder to show models…", "")
+                new Option("Select a CWA folder to show modelsâ€¦", "")
             );
             str.disabled = true;
             strName.value = "";
@@ -546,6 +546,38 @@ function onWorkspaceEvent(event, eventArgs) {
     );
 }
 
+
+/**
+ * Public API for accessing selected product data
+ * Usage: window.TrimbleProductAPI.getSelectedProduct()
+ */
+if (typeof window !== 'undefined') {
+    window.TrimbleProductAPI = {
+        /**
+         * Get the currently selected product information
+         * @returns {Object} Object with name, description, itemId, and fullItemData
+         */
+        getSelectedProduct: getSelectedProductData,
+        
+        /**
+         * Get only the product name
+         * @returns {string} Product name
+         */
+        getProductName: () => {
+            const data = getSelectedProductData();
+            return data.name;
+        },
+        
+        /**
+         * Get only the item ID
+         * @returns {string} Item ID
+         */
+        getSelectedItemId: () => {
+            const data = getSelectedProductData();
+            return data.itemId;
+        }
+    };
+}
 document.addEventListener("DOMContentLoaded", () => {
     document
         .getElementById("connectButton")
@@ -568,3 +600,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
     connectToWorkspace();
 });
+

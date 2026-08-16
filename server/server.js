@@ -35,12 +35,24 @@ async function verifyProjectAccess(req, res, next) {
   const auth = req.get("authorization");
   if (!validProjectId(projectId)) return res.status(400).json({error:"Invalid project id"});
   if (!auth?.startsWith("Bearer ")) return res.status(401).json({error:"A Trimble Connect access token is required."});
-  try {
-    const base = (process.env.TRIMBLE_API_ORIGIN || "https://app.connect.trimble.com").replace(/\/$/, "");
-    const check = await fetch(`${base}/tc/api/2.0/projects/${encodeURIComponent(projectId)}`, {headers:{authorization:auth,accept:"application/json"}});
-    if (!check.ok) return res.status(403).json({error:"You do not have access to this Trimble Connect project."});
-    next();
-  } catch { res.status(503).json({error:"Could not verify Trimble Connect access."}); }
+  const origins = [
+    process.env.TRIMBLE_API_ORIGIN,
+    "https://app.connect.trimble.com",
+    "https://app21.connect.trimble.com",
+    "https://app31.connect.trimble.com",
+    "https://app32.connect.trimble.com",
+    "https://app22.connect.trimble.com"
+  ].filter(Boolean).map(x => x.replace(/\/$/, ""));
+  let completedRequest = false;
+  for (const base of [...new Set(origins)]) {
+    try {
+      const check = await fetch(`${base}/tc/api/2.0/projects/${encodeURIComponent(projectId)}`, { headers:{authorization:auth,accept:"application/json"} });
+      completedRequest = true;
+      if (check.ok) return next();
+    } catch (error) { console.warn("Trimble project validation failed for", base, error.message); }
+  }
+  if (completedRequest) return res.status(403).json({error:"You do not have access to this Trimble Connect project."});
+  return res.status(503).json({error:"Could not verify Trimble Connect access."});
 }
 app.get("/api/contractors", asyncRoute(async (_req,res) => { const r=await (await pool()).request().query("SELECT ContractorId, ContractorName FROM dbo.Contractors WHERE IsActive=1 ORDER BY ContractorName"); res.json(r.recordset); }));
 app.get("/api/projects/:projectId/contractor", verifyProjectAccess, asyncRoute(async (req,res) => { const r=await (await pool()).request().input("projectId",sql.NVarChar(100),req.params.projectId).query("SELECT pc.ProjectId,pc.ContractorId,c.ContractorName,pc.IsLocked,pc.AssignedDate FROM dbo.ProjectContractor pc JOIN dbo.Contractors c ON c.ContractorId=pc.ContractorId WHERE pc.ProjectId=@projectId"); res.json(r.recordset[0] || null); }));

@@ -1,32 +1,26 @@
-# My Trimble Extension
+# Erection Sequence Planner
 
-This project registers **My Trimble Extension** in the Trimble Connect project
-left navigation. Its **Assignment** submenu is activated when the extension is
-enabled in the project.
+Trimble Connect 3D Viewer extension for locking an erection contractor, creating multiple plans, and assigning selected IFC assemblies an ordered sequence such as `2-1`, `2-2`, `2-3`.
 
-## Local deployment
+## What is deployed where
 
-1. Install dependencies:
+- **Extension files**: this repository root, hosted on HTTPS (the supplied GitHub Pages URL is in `manifest.json`).
+- **Planner API**: `server/`, hosted on a Node-capable HTTPS service such as Azure App Service, Render, or an internal IIS/Node server.
+- **Data**: SQL Server schema in `sql/schema.sql`.
 
-```bash
-npm install
-```
+GitHub Pages cannot run the API or SQL Server. Do not register the extension until both hosts are configured.
 
-2. Start the local server:
+## Production setup
 
-```bash
-npm run start
-```
+1. Create an empty SQL Server database and run [`sql/schema.sql`](sql/schema.sql). Replace the three sample contractor rows with your real contractor names.
+2. In `server/`, copy `.env.example` to `.env`, set the database values and exact HTTPS frontend origin, then run `npm install` and `npm start` locally. Deploy this folder to your Node host.
+3. Set [`config.js`](config.js) to the HTTPS API address, for example `https://erection-planner-api.company.com/api`. If the API and frontend share the same Node host, leave it as `/api`.
+4. Publish the root static files to HTTPS, then make sure the `url` and `icon` in [`manifest.json`](manifest.json) match their final public addresses.
+5. As a Trimble Connect project administrator, use **Project Settings → Apps & Capabilities → Add Custom**, enter the public manifest URL, enable the extension, then open the 3D Viewer.
 
-3. Deploy the site to the HTTPS URL in `manifest.json`. The included GitHub
-   Pages workflow deploys the site after a push to `main`; in the repository
-   settings, set **Pages → Source** to **GitHub Actions** before the first run.
-4. In the Trimble Connect project, open **Settings → Extensions**, add or edit
-   the extension with the deployed manifest URL, and enable it. Reload the
-   project page; the extension connects to the host and registers its left
-   navigation item automatically.
+## Notes
 
-`http://localhost:8080` is useful for development only; a live project must be
-able to load the extension URL over HTTPS.
-
-Edited
+- The API checks the Trimble access token against the project before project data is read or written.
+- The contractor lock is enforced by SQL Server, not just the browser UI.
+- The server uses serializable transactions so two users cannot receive the same sequence number during a simultaneous save.
+- IFC exports use different property names. The extension recognizes `GlobalId`, `IfcGUID`, `GUID`, `Assembly Mark`, `Assembly`, `Mark`, and `Name`; amend the lists in `app.js` if your IFC uses different labels.

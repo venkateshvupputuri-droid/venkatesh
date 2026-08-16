@@ -1,48 +1,35 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>My Trimble Extension</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Erection Sequence Planner</title>
+  <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <main class="tab-panel">
-        <section class="tab-content active">
-            <div class="content-panel">
-                <section class="example-card">
-                    <div class="form-row">
-                        <div class="field">
-                            <label for="cwaSelect">CWA</label>
-                            <select id="cwaSelect" disabled>
-                                <option>Connect to load CWA folders…</option>
-                            </select>
-                        </div>
-
-                        <div class="field">
-                            <label for="strSelect">Model No</label>
-                            <select id="strSelect" disabled>
-                                <option>Connect to load model files…</option>
-                            </select>
-                        </div>
-
-                        <div class="field">
-                            <label for="modelDescription">Str-name</label>
-                            <textarea id="modelDescription" rows="3" readonly></textarea>
-                        </div>
-                    </div>
-                </section>
-            </div>
-        </section>
-
-        <div class="status-row">
-            <button id="connectButton" class="action" type="button">Connect</button>
-            <button id="refreshButton" class="action" type="button">Refresh data</button>
-        </div>
-        <div id="statusMessage" class="status-note">Waiting for Trimble Connect workspace API…</div>
-    </main>
-
-    <script type="module" src="app.js"></script>
+  <main class="panel">
+    <header><h1>Erection Sequence Planner</h1><p id="projectName">Connecting to Trimble Connect…</p></header>
+    <section class="card" id="contractorCard">
+      <h2>1. Erection contractor</h2>
+      <div id="contractorLocked" hidden><strong id="lockedContractorName"></strong><p id="lockedContractorMeta"></p></div>
+      <div id="contractorEditor"><select id="contractorSelect"><option value="">Select contractor…</option></select><button id="saveContractorBtn" disabled>Save & lock</button><p class="hint">This decision is permanent. Only an administrator with database access can correct it.</p></div>
+    </section>
+    <section class="card">
+      <h2>2. Erection plans</h2>
+      <div class="row"><input id="newPlanNumber" type="number" min="1" step="1" placeholder="Plan no."><input id="newPlanName" maxlength="200" placeholder="Plan name (optional)"><button id="createPlanBtn">New plan</button></div>
+      <ul id="planList"></ul>
+    </section>
+    <section class="card" id="assemblyCard" hidden>
+      <h2>3. Assemblies — <span id="activePlanLabel"></span></h2>
+      <p class="hint">In the 3D Viewer, select assemblies, then save the current selection below.</p>
+      <button id="addSelectionBtn">Add current 3D selection</button>
+      <table><thead><tr><th>Sequence no.</th><th>Assembly</th><th>IFC GUID</th></tr></thead><tbody id="assemblyTableBody"></tbody></table>
+      <p id="assemblyEmpty" class="hint">No assemblies saved for this plan.</p>
+    </section>
+    <p id="statusMessage" role="status">Connecting…</p>
+  </main>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

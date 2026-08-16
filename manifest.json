@@ -1,12 +1,7 @@
 {
-  "icon": "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
-  "title": "My Trimble Extension",
   "url": "https://venkateshvupputuri-droid.github.io/venkatesh/",
-  "description": "Trimble Connect project extension page for custom UI and menu actions",
-  "configCommand": "my_trimble_extension_config",
-  "permissions": [
-    "accesstoken",
-    "projects"
-  ],
-  "enabled": true
+  "title": "Erection Sequence Planner",
+  "icon": "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
+  "description": "Assign a locked erection contractor, create plans, and sequence IFC assemblies selected in the 3D Viewer.",
+  "extensionType": ["3dviewer"]
 }

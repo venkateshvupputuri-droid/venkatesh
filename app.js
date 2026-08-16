@@ -29,6 +29,7 @@ async function api(path, options = {}, needsToken = false) {
 }
 
 async function loadContractor() {
+  if (!currentModel) { currentModel = (await workspace.viewer.getModels("loaded"))[0]; if (!currentModel) throw new Error("Open one IFC model in the 3D Viewer first."); }
   const contractors = await api("/contractors");
   const select = el("contractorSelect");
   select.replaceChildren(new Option("Select contractor…", ""), ...contractors.map(c => new Option(c.ContractorName, c.ContractorId)));

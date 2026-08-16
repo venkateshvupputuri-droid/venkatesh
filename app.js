@@ -62,4 +62,25 @@ async function loadContractor() { const contractors=await api("/contractors"); c
 async function saveContractor(){const contractorId=el("contractorSelect").value;if(!contractorId||!confirm("Save and permanently lock this contractor for this IFC?"))return;await api(`/projects/${encodeURIComponent(projectId)}/models/${encodeURIComponent(currentModel.id)}/contractor`,{method:"POST",body:JSON.stringify({contractorId,modelName:currentModel.name})},true);await loadContractor();status("Contractor saved and locked for this IFC.","success");}
 async function loadPlans(){const plans=await api(`/projects/${encodeURIComponent(projectId)}/models/${encodeURIComponent(currentModel.id)}/plans`,{},true);const list=el("planList");list.replaceChildren(...plans.map(plan=>{const b=document.createElement("button");b.className=activePlan?.PlanId===plan.PlanId?"active":"";b.textContent=`Plan ${plan.PlanNumber}${plan.PlanName?` — ${plan.PlanName}`:""}`;b.onclick=()=>choosePlan(plan);const li=document.createElement("li");li.append(b);return li;}));}
 async function createPlan(){const planNumber=Number(el("newPlanNumber").value),planName=el("newPlanName").value.trim();if(!Number.isInteger(planNumber)||planNumber<1)throw new Error("Enter a positive whole plan number.");await api(`/projects/${encodeURIComponent(projectId)}/models/${encodeURIComponent(currentModel.id)}/plans`,{method:"POST",body:JSON.stringify({planNumber,planName,modelName:currentModel.name})},true);el("newPlanNumber").value="";el("newPlanName").value="";await loadPlans();}
-async function init(){try{workspace=await TrimbleConnectWorkspace.connect(window.parent,onWorkspaceEvent,30000);const project=await workspace.project.getProject();projectId=project.id;const models=await workspace.viewer.getModels("loaded");currentModel=models[0];if(!currentModel)throw new Error("Open one IFC model in the 3D Viewer before using the planner.");el("projectName").textContent=`${project.name||projectId} — ${currentModel.name||"Loaded IFC"}`;el("contractorSelect").onchange=e=>el("saveContractorBtn").disabled=!e.target.value;el("saveContractorBtn").onclick=()=>run(saveContractor);el("createPlanBtn").onclick=()=>run(createPlan);el("addSelectionBtn").onclick=()=>run(addSelection);el("colourizePlansBtn").onclick=()=>run(colourizePlan);el("resetColoursBtn").onclick=()=>run(resetColours);el("downloadExcelBtn").onclick=()=>run(downloadExcel);await loadContractor();loadPlans().catch(e=>status(e.message,"error"));status("Ready for the loaded IFC.","success");}catch(e){console.error(e);status(e.message||"Unable to connect.","error");}}
+async function resolveLoadedModel(){
+  let models=[];
+  try { models=await workspace.viewer.getModels("loaded"); } catch (_) { /* Older viewer API: use all viewer models below. */ }
+  if (!models?.length) models=await workspace.viewer.getModels();
+  currentModel=models.find(model=>model.state==="loaded"||model.loaded===true)||models[0];
+  if(!currentModel)throw new Error("Open an IFC model in the 3D Viewer, then click Connect / refresh IFC.");
+}
+async function connectPlanner(){try{
+  if(!workspace)workspace=await TrimbleConnectWorkspace.connect(window.parent,onWorkspaceEvent,30000);
+  const project=await workspace.project.getProject();projectId=project.id;
+  await resolveLoadedModel();activePlan=undefined;el("assemblyCard").hidden=true;
+  el("projectName").textContent=`${project.name||projectId} — ${currentModel.name||"Loaded IFC"}`;
+  await loadContractor();await loadPlans();
+  status("Connected. Contractor and plans shown for this IFC only.","success");
+}catch(e){console.error(e);status(e.message||"Unable to connect.","error");}}
+async function init(){
+  el("contractorSelect").onchange=e=>el("saveContractorBtn").disabled=!e.target.value;
+  el("saveContractorBtn").onclick=()=>run(saveContractor);el("createPlanBtn").onclick=()=>run(createPlan);
+  el("addSelectionBtn").onclick=()=>run(addSelection);el("colourizePlansBtn").onclick=()=>run(colourizePlan);
+  el("resetColoursBtn").onclick=()=>run(resetColours);el("downloadExcelBtn").onclick=()=>run(downloadExcel);
+  el("connectButton").onclick=()=>run(connectPlanner);await connectPlanner();
+}

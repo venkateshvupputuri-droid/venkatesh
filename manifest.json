@@ -3,5 +3,6 @@
   "title": "Erection Sequence Planner",
   "icon": "https://venkateshvupputuri-droid.github.io/venkatesh/icon.svg",
   "description": "Assign a locked erection contractor, create plans, and sequence IFC assemblies selected in the 3D Viewer.",
-  "extensionType": ["3dviewer"]
+  "extensionType": ["3dviewer"],
+  "permissions": ["accesstoken"]
 }

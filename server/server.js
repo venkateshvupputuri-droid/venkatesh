@@ -2,13 +2,30 @@ require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
-const sql = require("mssql");
+// Local SQL Express commonly has TCP/IP disabled. The native driver supports
+// Windows Authentication and named local instances without opening SQL Server
+// to the network. Production deployments continue to use the default mssql driver.
+const sql = process.env.DB_AUTH === "windows"
+  ? require("mssql/msnodesqlv8")
+  : require("mssql");
 const app = express();
 const origins = (process.env.CORS_ORIGIN || "").split(",").map(x => x.trim()).filter(Boolean);
 app.use(cors({ origin: origins.length ? origins : false }));
 app.use(express.json({ limit: "256kb" }));
 app.use(express.static(path.join(__dirname, "..")));
-const db = { server:process.env.DB_SERVER, port:Number(process.env.DB_PORT || 1433), database:process.env.DB_NAME, user:process.env.DB_USER, password:process.env.DB_PASSWORD, options:{encrypt:process.env.DB_ENCRYPT !== "false",trustServerCertificate:process.env.DB_TRUST_SERVER_CERT === "true"} };
+const db = process.env.DB_AUTH === "windows"
+  ? {
+      driver: "msnodesqlv8",
+      connectionString: `Driver={ODBC Driver 18 for SQL Server};Server=${process.env.DB_SERVER || "localhost\\SQLEXPRESS"};Database=${process.env.DB_NAME};Trusted_Connection=Yes;TrustServerCertificate=Yes;`
+    }
+  : {
+      server: process.env.DB_SERVER,
+      port: Number(process.env.DB_PORT || 1433),
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      options: { encrypt: process.env.DB_ENCRYPT !== "false", trustServerCertificate: process.env.DB_TRUST_SERVER_CERT === "true" }
+    };
 let poolPromise;
 const pool = () => poolPromise ||= new sql.ConnectionPool(db).connect();
 const asyncRoute = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next);

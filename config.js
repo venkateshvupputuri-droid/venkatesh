@@ -1,3 +1,4 @@
-// Temporary HTTPS tunnel to the local ErectionPlanner API.
-// Replace with a permanent HTTPS API host before production rollout.
-window.ERECTION_PLANNER_API_BASE = "https://sbjct-last-crown-females.trycloudflare.com/api";
+// HTTPS endpoint for the Erection Planner API.
+// This is a temporary Cloudflare quick tunnel. Replace it with the permanent
+// API hostname before a production rollout.
+window.ERECTION_PLANNER_API_BASE = "https://whats-groups-automatic-qualifying.trycloudflare.com/api";

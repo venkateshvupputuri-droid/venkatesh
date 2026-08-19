@@ -13,6 +13,7 @@ const origins = (process.env.CORS_ORIGIN || "").split(",").map(x => x.trim()).fi
 app.use(cors({ origin: origins.length ? origins : false }));
 app.use(express.json({ limit: "256kb" }));
 app.use(express.static(path.join(__dirname, "..")));
+app.get("/health", (_req, res) => res.json({ ok: true }));
 const db = process.env.DB_AUTH === "windows"
   ? {
       driver: "msnodesqlv8",

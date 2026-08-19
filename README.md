@@ -18,6 +18,16 @@ GitHub Pages cannot run the API or SQL Server. Do not register the extension unt
 4. Publish the root static files to HTTPS, then make sure the `url` and `icon` in [`manifest.json`](manifest.json) match their final public addresses.
 5. As a Trimble Connect project administrator, use **Project Settings → Apps & Capabilities → Add Custom**, enter the public manifest URL, enable the extension, then open the 3D Viewer.
 
+## Repeatable local startup
+
+From the repository root, run:
+
+```powershell
+npm --prefix server run start:local
+```
+
+This command reuses an API already listening on port 4000, starts it if needed, and starts a Cloudflare quick tunnel. Quick tunnels are temporary; their URL changes when the tunnel stops. For a permanent public API, create a named Cloudflare tunnel or deploy `server/` to a Node HTTPS host, then set `ERECTION_PLANNER_API_BASE` to its stable `/api` URL before publishing the extension.
+
 ## Notes
 
 - The API checks the Trimble access token against the project before project data is read or written.

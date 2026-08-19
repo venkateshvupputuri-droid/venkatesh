@@ -18,12 +18,12 @@
     <section class="card">
       <h2>2. Erection plans</h2>
       <div class="row"><input id="newPlanNumber" type="number" min="1" step="1" placeholder="Plan no."><input id="newPlanName" maxlength="200" placeholder="Plan name (optional)"><button id="createPlanBtn">New plan</button></div>
-      <ul id="planList"></ul>
+      <p class="hint">Select one or more plans to view and colour them together.</p><ul id="planList"></ul>
     </section>
     <section class="card" id="assemblyCard" hidden>
       <h2>3. Assemblies — <span id="activePlanLabel"></span></h2>
       <p class="hint">In the 3D Viewer, select assemblies, then save the current selection below.</p>
-      <div class="row"><button id="addSelectionBtn">Add current 3D selection</button><button id="colourizePlansBtn" type="button">Colourize plans</button><button id="resetColoursBtn" type="button">Reset colours</button><button id="downloadExcelBtn" type="button">Download Excel</button></div>
+      <div class="row"><button id="addSelectionBtn">Add current 3D selection</button><button id="colourizePlansBtn" type="button">Colorize model</button><button id="resetColoursBtn" type="button">Reset colours</button><button id="downloadExcelBtn" type="button">Download Excel</button></div>
       <div class="table-wrap"><table><thead><tr><th>Serial no.</th><th>Sequence no.</th><th>Assembly name</th><th>Assembly mark</th><th>Weight (t)</th><th>Grid</th><th>TOS</th></tr></thead><tbody id="assemblyTableBody"></tbody></table></div>
       <p id="assemblyEmpty" class="hint">No assemblies saved for this plan.</p><p id="totalWeight" class="total-weight">Total weight: 0.000 t</p>
     </section>

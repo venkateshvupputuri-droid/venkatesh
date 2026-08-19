@@ -58,7 +58,29 @@ if ($publicApi) {
   else {
     Write-Host "No permanent API URL configured. Starting one temporary quick tunnel."
     Write-Host "For a permanent deployment, set ERECTION_PLANNER_API_BASE to your named tunnel URL."
-    Start-Process cloudflared -ArgumentList "tunnel --url http://localhost:$port" -WorkingDirectory $root
+    $tunnelOutLog = Join-Path $serverDir "quick-tunnel.out.log"
+    $tunnelErrLog = Join-Path $serverDir "quick-tunnel.err.log"
+    Remove-Item $tunnelOutLog, $tunnelErrLog -Force -ErrorAction SilentlyContinue
+    Start-Process cloudflared -ArgumentList "tunnel --url http://localhost:$port" -WorkingDirectory $root -RedirectStandardOutput $tunnelOutLog -RedirectStandardError $tunnelErrLog
+    $publicUrl = $null
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+      Start-Sleep -Milliseconds 500
+      foreach ($log in @($tunnelOutLog, $tunnelErrLog)) {
+        if (Test-Path $log) {
+          $text = [string](Get-Content $log -Raw -ErrorAction SilentlyContinue)
+          if ($text) {
+            $match = [regex]::Match($text, 'https://[a-z0-9-]+\.trycloudflare\.com')
+            if ($match.Success) { $publicUrl = $match.Value; break }
+          }
+        }
+      }
+      if ($publicUrl) { break }
+    }
+    if (-not $publicUrl) { throw "Cloudflare tunnel did not provide a public URL. Check server/quick-tunnel.out.log and server/quick-tunnel.err.log." }
+    $config = Get-Content $configPath -Raw
+    $config = [regex]::Replace($config, 'window\.ERECTION_PLANNER_API_BASE\s*=\s*"[^"]*";', "window.ERECTION_PLANNER_API_BASE = `"$publicUrl/api`";")
+    Set-Content -Path $configPath -Value $config -NoNewline
+    Write-Host "Updated config.js to $publicUrl/api"
   }
 }
 

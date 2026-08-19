@@ -63,12 +63,12 @@ if ($publicApi) {
     Remove-Item $tunnelOutLog, $tunnelErrLog -Force -ErrorAction SilentlyContinue
     Start-Process cloudflared -ArgumentList "tunnel --url http://localhost:$port" -WorkingDirectory $root -RedirectStandardOutput $tunnelOutLog -RedirectStandardError $tunnelErrLog
     $publicUrl = $null
-    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+    for ($attempt = 0; $attempt -lt 120; $attempt++) {
       Start-Sleep -Milliseconds 500
       foreach ($log in @($tunnelOutLog, $tunnelErrLog)) {
         if (Test-Path $log) {
-          $text = [string](Get-Content $log -Raw -ErrorAction SilentlyContinue)
-          if ($text) {
+          try { $text = [string](Get-Content $log -Raw -ErrorAction Stop) } catch { $text = "" }
+          if ($text.Length -gt 0) {
             $match = [regex]::Match($text, 'https://[a-z0-9-]+\.trycloudflare\.com')
             if ($match.Success) { $publicUrl = $match.Value; break }
           }

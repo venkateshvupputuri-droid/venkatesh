@@ -47,14 +47,24 @@ async function choosePlan(plan) { const selected = selectedPlans.some(item => it
 async function loadAssemblies() { const rowsByPlan = await Promise.all(selectedPlans.map(plan => api(`/plans/${plan.PlanId}/assemblies`, {}, true))); displayedAssemblies = rowsByPlan.flat(); const body = el("assemblyTableBody"); let total = 0; const tableRows = displayedAssemblies.map((row, index) => { total += Number(row.Weight) || 0; const tr = document.createElement("tr"); tr.innerHTML = `<td>${index + 1}</td><td>${row.SequenceCode}</td><td>${escapeHtml(row.AssemblyName || row.AssemblyGuid)}</td><td>${escapeHtml(row.AssemblyMark || "—")}</td><td>${Number(row.Weight || 0).toFixed(3)}</td><td>${escapeHtml(row.Grid || "—")}</td><td>${escapeHtml(row.Tos || "—")}</td>`; return tr; }); const totalRow = document.createElement("tr"); totalRow.innerHTML = `<td colspan="4"><strong>Total weight</strong></td><td><strong>${total.toFixed(3)}</strong></td><td colspan="2">t</td>`; body.replaceChildren(...tableRows, totalRow); el("assemblyEmpty").hidden = displayedAssemblies.length > 0; el("totalWeight").hidden = true; }
 function propertyValue(item, names) { const flat = (item.properties || []).flatMap(set => set.properties || []); const found = flat.find(p => names.includes(String(p.name || "").toLowerCase().replace(/[_/]+/g, " ").trim())); return found?.value == null ? "" : String(found.value); }
 async function addSelection() { if (!activePlan) return; const selection = await workspace.viewer.getSelection(); if (!selection?.length) throw new Error("Select one or more assemblies in the 3D Viewer first."); const assemblies = []; for (const group of selection) { const props = await workspace.viewer.getObjectProperties(group.modelId, group.objectRuntimeIds); props.forEach((item, i) => { const runtimeId = group.objectRuntimeIds[i]; const guid = propertyValue(item, ["globalid", "ifcguid", "guid"]) || `${group.modelId}:${runtimeId}`; const mark = propertyValue(item, ["assembly cast unit mark"]); const name = propertyValue(item, ["assembly name"]) || item.name || item.class || guid; const weight = Number((propertyValue(item, ["assembly cast unit weight", "weight"]) || "0").replace(/[^0-9.-]/g, "")) || 0; const grid = propertyValue(item, ["assembly cast unit position code"]); const tos = propertyValue(item, ["assembly cast unit top elevation"]); assemblies.push({ modelId: group.modelId, runtimeId, guid, name, mark, weight, grid, tos }); }); } const result = await api(`/plans/${activePlan.PlanId}/assemblies`, { method: "POST", body: JSON.stringify({ assemblies }) }, true); await loadAssemblies(); status(result.inserted.length ? `${result.inserted.length} assembly(s) added.` : "Those assemblies are already in this plan.", "success"); }
-function colourSelector(rows) {
-  const objectRuntimeIds = [...new Set(rows
+async function colourSelector(rows) {
+  const assemblyRuntimeIds = [...new Set(rows
     .filter(row => String(row.ModelId || currentModel.id) === String(currentModel.id))
     .map(row => Number(row.ObjectRuntimeId))
     .filter(runtimeId => Number.isInteger(runtimeId) && runtimeId > 0))];
+  if (!assemblyRuntimeIds.length) return undefined;
+
+  // Saved assembly IDs are hierarchy parents. Resolve their visible descendants first,
+  // then apply colour to that exact list without recursive expansion.
+  const matchingObjects = await workspace.viewer.getObjects({
+    modelObjectIds: [{ modelId: currentModel.id, objectRuntimeIds: assemblyRuntimeIds, recursive: true }]
+  });
+  const objectRuntimeIds = [...new Set(matchingObjects
+    .filter(group => String(group.modelId) === String(currentModel.id))
+    .flatMap(group => group.objects || [])
+    .map(object => Number(object.id))
+    .filter(runtimeId => Number.isInteger(runtimeId) && runtimeId > 0))];
   return objectRuntimeIds.length ? {
-    // Do not let the viewer expand selected assembly parents to their children.
-    // A plan must colour only the exact IDs that were saved from the 3D selection.
     modelObjectIds: [{ modelId: currentModel.id, objectRuntimeIds, recursive: false }]
   } : undefined;
 }
@@ -62,7 +72,7 @@ function colourSelector(rows) {
 async function colourizePlan() {
   if (!selectedPlans.length) throw new Error("Select at least one plan first.");
   const rowsByPlan = await Promise.all(selectedPlans.map(plan => api(`/plans/${plan.PlanId}/assemblies`, {}, true)));
-  const selectors = rowsByPlan.map(colourSelector);
+  const selectors = await Promise.all(rowsByPlan.map(colourSelector));
   const usableRows = selectors.reduce((count, selector) => count + (selector?.modelObjectIds[0]?.objectRuntimeIds.length || 0), 0);
   if (!usableRows) throw new Error("The selected assemblies have no current viewer IDs. Select them again in the 3D Viewer and use Add current 3D selection.");
 

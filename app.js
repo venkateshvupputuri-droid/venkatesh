@@ -53,7 +53,9 @@ function colourSelector(rows) {
     .map(row => Number(row.ObjectRuntimeId))
     .filter(runtimeId => Number.isInteger(runtimeId) && runtimeId > 0))];
   return objectRuntimeIds.length ? {
-    modelObjectIds: [{ modelId: currentModel.id, objectRuntimeIds }]
+    // Do not let the viewer expand selected assembly parents to their children.
+    // A plan must colour only the exact IDs that were saved from the 3D selection.
+    modelObjectIds: [{ modelId: currentModel.id, objectRuntimeIds, recursive: false }]
   } : undefined;
 }
 

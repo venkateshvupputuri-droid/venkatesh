@@ -54,16 +54,16 @@ async function colourSelector(rows) {
     .filter(runtimeId => Number.isInteger(runtimeId) && runtimeId > 0))];
   if (!assemblyRuntimeIds.length) return undefined;
 
-  // Saved assembly IDs are hierarchy parents. Resolve their visible descendants first,
-  // then apply colour to that exact list without recursive expansion.
-  const matchingObjects = await workspace.viewer.getObjects({
-    modelObjectIds: [{ modelId: currentModel.id, objectRuntimeIds: assemblyRuntimeIds, recursive: true }]
-  });
-  const objectRuntimeIds = [...new Set(matchingObjects
-    .filter(group => String(group.modelId) === String(currentModel.id))
-    .flatMap(group => group.objects || [])
-    .map(object => Number(object.id))
-    .filter(runtimeId => Number.isInteger(runtimeId) && runtimeId > 0))];
+  // Saved assembly IDs are hierarchy parents. Resolve their descendants through
+  // the hierarchy API, then colour exactly those resolved runtime IDs.
+  const children = await workspace.viewer.getHierarchyChildren(
+    currentModel.id, assemblyRuntimeIds, undefined, true
+  );
+  const objectRuntimeIds = [...new Set([
+    ...assemblyRuntimeIds,
+    ...children.map(child => Number(child.id))
+      .filter(runtimeId => Number.isInteger(runtimeId) && runtimeId > 0)
+  ])];
   return objectRuntimeIds.length ? {
     modelObjectIds: [{ modelId: currentModel.id, objectRuntimeIds, recursive: false }]
   } : undefined;

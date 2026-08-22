@@ -52,14 +52,16 @@ function colourSelector(rows) {
     .filter(row => String(row.ModelId || currentModel.id) === String(currentModel.id))
     .map(row => Number(row.ObjectRuntimeId))
     .filter(runtimeId => Number.isInteger(runtimeId) && runtimeId > 0))];
-  return objectRuntimeIds.length ? { modelId: currentModel.id, objectRuntimeIds } : undefined;
+  return objectRuntimeIds.length ? {
+    modelObjectIds: [{ modelId: currentModel.id, objectRuntimeIds }]
+  } : undefined;
 }
 
 async function colourizePlan() {
   if (!selectedPlans.length) throw new Error("Select at least one plan first.");
   const rowsByPlan = await Promise.all(selectedPlans.map(plan => api(`/plans/${plan.PlanId}/assemblies`, {}, true)));
   const selectors = rowsByPlan.map(colourSelector);
-  const usableRows = selectors.reduce((count, selector) => count + (selector?.objectRuntimeIds.length || 0), 0);
+  const usableRows = selectors.reduce((count, selector) => count + (selector?.modelObjectIds[0]?.objectRuntimeIds.length || 0), 0);
   if (!usableRows) throw new Error("The selected assemblies have no current viewer IDs. Select them again in the 3D Viewer and use Add current 3D selection.");
 
   // An undefined selector intentionally colours every loaded object grey first.
@@ -69,13 +71,14 @@ async function colourizePlan() {
   let colouredCount = 0;
   for (const [index, selector] of selectors.entries()) {
     if (!selector) continue;
-    selector.objectRuntimeIds = selector.objectRuntimeIds.filter(runtimeId => !coloured.has(`${selector.modelId}:${runtimeId}`));
-    selector.objectRuntimeIds.forEach(runtimeId => coloured.add(`${selector.modelId}:${runtimeId}`));
-    if (!selector.objectRuntimeIds.length) continue;
+    const modelObjects = selector.modelObjectIds[0];
+    modelObjects.objectRuntimeIds = modelObjects.objectRuntimeIds.filter(runtimeId => !coloured.has(`${modelObjects.modelId}:${runtimeId}`));
+    modelObjects.objectRuntimeIds.forEach(runtimeId => coloured.add(`${modelObjects.modelId}:${runtimeId}`));
+    if (!modelObjects.objectRuntimeIds.length) continue;
 
-    // setObjectState accepts one ObjectSelector, not an array of selectors.
+    // An ObjectSelector requires modelObjectIds; the IDs cannot be top-level.
     await workspace.viewer.setObjectState(selector, { color: palette[index % palette.length], opacity: 1 });
-    colouredCount += selector.objectRuntimeIds.length;
+    colouredCount += modelObjects.objectRuntimeIds.length;
   }
   status(`${colouredCount} assemblies coloured across ${selectedPlans.length} plan(s); other IFC assemblies are grey.`, "success");
 }

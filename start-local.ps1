@@ -54,8 +54,23 @@ if ($publicApi) {
   Write-Host "Set ERECTION_PLANNER_API_BASE to the named tunnel HTTPS URL before publishing."
 } else {
   $tunnel = Get-Process cloudflared -ErrorAction SilentlyContinue
-  if ($tunnel) { Write-Host "Cloudflare tunnel already running; reusing process $($tunnel[0].Id)." }
+  $configuredTunnel = $null
+  $config = Get-Content $configPath -Raw
+  $configuredMatch = [regex]::Match($config, 'window\.ERECTION_PLANNER_API_BASE\s*=\s*"(https://[^"]+\.trycloudflare\.com)/api";')
+  if ($configuredMatch.Success) { $configuredTunnel = $configuredMatch.Groups[1].Value }
+  $tunnelHealthy = $false
+  if ($tunnel -and $configuredTunnel) {
+    try {
+      $health = Invoke-WebRequest "$configuredTunnel/health" -UseBasicParsing -TimeoutSec 5
+      $tunnelHealthy = $health.StatusCode -eq 200
+    } catch { }
+  }
+  if ($tunnelHealthy) { Write-Host "Cloudflare tunnel already running and healthy; reusing process $($tunnel[0].Id)." }
   else {
+    if ($tunnel) {
+      Write-Host "Existing Cloudflare tunnel is stale; restarting it."
+      $tunnel | Stop-Process -Force
+    }
     Write-Host "No permanent API URL configured. Starting one temporary quick tunnel."
     Write-Host "For a permanent deployment, set ERECTION_PLANNER_API_BASE to your named tunnel URL."
     $tunnelOutLog = Join-Path $serverDir "quick-tunnel.out.log"
